@@ -94,3 +94,7 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 ## T023 — done 2026-10-06
 - `src/hooks/usePriceSource.ts`: module-level `selectPriceSource` from inlined `EXPO_PUBLIC_PYTH_API_KEY`/`EXPO_PUBLIC_PRICE_SOURCE`; no app code calls `fetchLatestPrice`/`fetchPriceAt` directly anymore. `useReceipts` resolves via `source.at` (query key now includes `source.kind`); New Receipt hint via `source.latest` (key `["price-latest", kind, asset]`).
 - `DemoBadge` (`src/components/receipt/demo-badge.tsx`, yellow chip) on: New Receipt price hint, list rows with HIT/MISS, Receipt detail (any known call), Profile stats card. Labels say "Demo price" instead of "Pyth" when mock. `shareText(..., { demo })` adds `DEMO_SHARE_PREFIX` first line and "demo price $x" (tested). Android bundle export OK.
+
+## T024 — done 2026-10-06
+- APK: `dist/receipts-20261006-2358.apk` (65 MB) built with T021–T023 code (incremental `./gradlew assembleRelease`, 35 s; no native/app.json changes since T017 so no prebuild). Verified Hermes bundle in APK contains "DEMO PRICES"/"Demo price" strings. Log: `.ralph/logs/t024-gradle.log`.
+- `adb devices` listed no device → not installed. Older `dist/receipts-20261006-2336.apk` is pre-SOL/SKR; ignore it.

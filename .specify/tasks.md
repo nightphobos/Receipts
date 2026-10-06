@@ -3,7 +3,7 @@
 Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do them **in order**, one per iteration.
 
 ## Phase 0 — Baseline
-- [ ] T001 Read the template code (wallet connect, transaction sending, navigation, cluster config) and summarise it in NOTES.md. Run `yarn install` and `npx tsc --noEmit`; record baseline result. Ensure `.gitignore` covers `node_modules`, `android/build`, `android/app/build`, `dist`, `.env*`, `.ralph/logs`.
+- [x] T001 Read the template code (wallet connect, transaction sending, navigation, cluster config) and summarise it in NOTES.md. Run `yarn install` and `npx tsc --noEmit`; record baseline result. Ensure `.gitignore` covers `node_modules`, `android/build`, `android/app/build`, `dist`, `.env*`, `.ralph/logs`.
 - [ ] T002 Add `jest` + `ts-jest` for `src/core` and `src/chain` (node env), scripts `test` and `typecheck` in package.json, one trivial passing test. Both commands green.
 
 ## Phase 1 — Core (pure TS, test-first)

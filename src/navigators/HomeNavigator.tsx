@@ -4,7 +4,7 @@ import { TopBar } from "../components/top-bar/top-bar-feature";
 import { HomeScreen } from "../screens/HomeScreen";
 import MaterialCommunityIcon from "@expo/vector-icons/MaterialCommunityIcons";
 import { useTheme } from "react-native-paper";
-import BlankScreen from "../screens/BlankScreen";
+import { NewReceiptScreen } from "../screens/NewReceiptScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -30,12 +30,10 @@ export function HomeNavigator() {
                   color={color}
                 />
               );
-            case "Blank":
+            case "New":
               return (
                 <MaterialCommunityIcon
-                  name={
-                    focused ? "application-edit" : "application-edit-outline"
-                  }
+                  name={focused ? "lock-plus" : "lock-plus-outline"}
                   size={size}
                   color={color}
                 />
@@ -45,7 +43,7 @@ export function HomeNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Blank" component={BlankScreen} />
+      <Tab.Screen name="New" component={NewReceiptScreen} />
     </Tab.Navigator>
   );
 }

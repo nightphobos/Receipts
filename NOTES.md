@@ -50,3 +50,8 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 ## T011 — done 2026-10-06
 - `src/storage/secrets.ts` (pure, no RN import): `KeyValueStore` interface — pass `AsyncStorage` directly (type-checked compatible). `saveSecret(store, hash, {json,salt})` throws unless sha256(json|salt) == hash; `loadSecret` → `Secret|null` (null on missing/corrupt/mismatch); `deleteSecret`; `exportAll` → `[{hash,json,salt}]` sorted by hash; `exportSecretsJson` = clipboard string.
 - Jest roots now include `src/storage`. T012: save secret before signing, `deleteSecret` if wallet rejects.
+
+## T012 — done 2026-10-06
+- Pure helpers: `src/core/draft.ts` (`DEADLINE_PRESETS`, `parseTarget` (comma ok, no exponents), `parseCustomHours`, `draftCall(draft, now)` → `ValidationResult`); `src/chain/seal.ts` `sealCall(deps, call)` = salt → hash → saveSecret → blockhash → build memo tx → MWA sign/send. Secret deleted only if blockhash fetch fails or `isUserRejection(e)` (MWA code -1/-3/ERROR_WALLET_NOT_FOUND); other errors keep it (tx may have landed). Reuse `sealCall`'s pattern for reveal in T014.
+- UI: `src/screens/NewReceiptScreen.tsx` replaces the template "Blank" tab (tab name `New`; BlankScreen deleted). First-seal warning flag in AsyncStorage `rcpt:warned-local-secrets`. Pyth hint via react-query key `["pyth-latest", asset]` with `EXPO_PUBLIC_PYTH_API_KEY` (shows "Pyth price unavailable" until a key exists, see T006). Added `expo-haptics@~14.0.1`.
+- `ReceiptDetail` route (`{hash, signature?}`) added to root stack with a placeholder `ReceiptDetailScreen` — T014 replaces its body. `RootStackParamList` is now exported. Verified `npx expo export --platform android` bundles (output deleted).

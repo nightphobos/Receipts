@@ -32,9 +32,10 @@ import {
  *
  */
 
-type RootStackParamList = {
+export type RootStackParamList = {
   Home: undefined;
   Settings: undefined;
+  ReceiptDetail: { hash: string; signature?: string };
   // 🔥 Your screens go here
 };
 
@@ -45,7 +46,7 @@ declare global {
 }
 
 // Documentation: https://reactnavigation.org/docs/stack-navigator/
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList & { HomeStack: undefined }>();
 
 const AppStack = () => {
   return (
@@ -56,6 +57,11 @@ const AppStack = () => {
         options={{ headerShown: false }}
       />
       <Stack.Screen name="Settings" component={Screens.SettingsScreen} />
+      <Stack.Screen
+        name="ReceiptDetail"
+        component={Screens.ReceiptDetailScreen}
+        options={{ title: "Receipt" }}
+      />
       {/** 🔥 Your screens go here */}
     </Stack.Navigator>
   );

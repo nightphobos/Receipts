@@ -6,3 +6,4 @@
 [2026-10-06 22:55:56] iter 6/60 · open: 15 · next: T006 `src/core/pyth.ts`: verified feed IDs for all five assets, `fetchLate
 [2026-10-06 22:58:06] iter 7/60 · open: 14 · next: T007 `src/core/score.ts`: `statusOf(receipt, nowSec)`, `resolve(call, pric
 [2026-10-06 22:59:15] iter 8/60 · open: 13 · next: T008 `src/core/history.ts`: from a list of `{ signature, blockTime, signer
+[2026-10-06 23:00:36] iter 9/60 · open: 12 · next: T009 `src/chain/memoTx.ts`: build the Memo instruction/transaction (progra

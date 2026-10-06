@@ -15,7 +15,7 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 - [x] T008 `src/core/history.ts`: from a list of `{ signature, blockTime, signer, memo, failed }` build receipts: match reveals to commits by hash and same signer, verify hash and deadline, ignore forged/duplicate/foreign reveals, ignore commits with blockTime > deadline, ignore failed tx. Tests with fixtures covering each rule.
 
 ## Phase 2 — Chain and storage
-- [ ] T009 `src/chain/memoTx.ts`: build the Memo instruction/transaction (program id, signer key, UTF-8 data, optional priority fee). Unit test instruction data and keys.
+- [x] T009 `src/chain/memoTx.ts`: build the Memo instruction/transaction (program id, signer key, UTF-8 data, optional priority fee). Unit test instruction data and keys.
 - [ ] T010 `src/chain/fetchHistory.ts`: `getSignaturesForAddress` + batched `getParsedTransactions`, extract `rcpt:1:` memos (parsed spl-memo, log fallback), map to the T008 input shape. Tests with a mocked Connection and a recorded parsed-transaction fixture.
 - [ ] T011 `src/storage/secrets.ts`: save/load/delete/exportAll over AsyncStorage (injected interface). Tests with an in-memory mock.
 

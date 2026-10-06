@@ -37,3 +37,7 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 ## T008 — done 2026-10-06
 - `src/core/history.ts`: `buildReceipts(txs: MemoTx[], wallet)` → `Receipt[]` newest commit first. `MemoTx = { signature, blockTime: number|null, signer, memo, failed }` — T010 must produce this shape (one entry per rcpt memo). Txs with null blockTime, failed, or signer ≠ wallet are dropped.
 - Decision (honesty): reveal valid only if commit.blockTime ≤ reveal.blockTime < deadline + 24 h (`REVEAL_GRACE_SEC`) — a late reveal must not turn a forfeit into a hit. Early reveals (before deadline) are accepted (status `unresolved` until Pyth price exists). Duplicate commits/reveals: earliest blockTime wins.
+
+## T009 — done 2026-10-06
+- `src/chain/memoTx.ts`: `MEMO_PROGRAM_ID`, `memoInstruction(signer, memo)` (throws on empty / >500 UTF-8 bytes), `priorityFeeInstruction(microLamports)`, `buildMemoTransaction({signer, memo, recentBlockhash, priorityMicroLamports?})` → unsigned `VersionedTransaction` (legacy message, fee payer = signer; default 10 000 µlamports fee ix first, `0` omits it). T012: get blockhash via `getLatestBlockhashAndContext`, pass `context.slot` as minContextSlot to `signAndSendTransaction` like the template.
+- Removed chain sanity placeholder test.

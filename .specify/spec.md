@@ -13,7 +13,7 @@ A Seeker app where every call is sealed on Solana as a hash now, revealed after 
 ## Core flow (must work end to end)
 1. **Connect** wallet via Mobile Wallet Adapter (Seed Vault Wallet on Seeker; Phantom/Solflare elsewhere).
 2. **Seal a call.** The user picks:
-   - asset: SOL, BTC, ETH, JUP, BONK (fixed list);
+   - asset: **SOL or SKR** (fixed list; SKR = Solana Mobile / Seeker token — this is the Seeker-native angle and the SKR-integration prize);
    - direction: `above` or `below`;
    - target price in USD (> 0);
    - deadline: presets 1 h, 24 h, 3 d, 7 d, or custom; must be ≥ now + 1 h and ≤ now + 30 d.
@@ -45,6 +45,12 @@ Hit-rate = hits / (hits + misses + forfeited). Pending (`sealed`, `awaiting_reve
 - Signing through MWA → Seed Vault on Seeker.
 - Haptic feedback on seal and on reveal.
 - P2 (if time): "Seeker verified" badge if the wallet holds a Seeker Genesis Token.
+
+## Price source (changed 2026-10-06)
+Pyth Hermes requires an API key since 2026-08-26 and we don't have one yet. Prices come through a `PriceSource` interface with two implementations:
+- `pyth` — real Hermes, used when `EXPO_PUBLIC_PYTH_API_KEY` is set and `EXPO_PUBLIC_PRICE_SOURCE` is not `mock`.
+- `mock` — deterministic demo prices, used otherwise (the default tonight).
+Honesty rule: whenever the mock source is active, every screen that shows a price or a HIT/MISS shows a visible **DEMO PRICES** badge, and "Copy share text" prefixes the text with `[DEMO PRICES — not real results]`. Mock results must never be presentable as real.
 
 ## Out of scope tonight
 Web profile, leaderboard, share image card, push notifications, other wallets' profiles, Genesis badge (P2 only).

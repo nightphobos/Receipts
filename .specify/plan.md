@@ -53,6 +53,16 @@ Decoders return `null` for anything malformed (wrong prefix, version, hex length
 - Price = `Number(price.price) * 10 ** price.expo`.
 - Feed IDs: **look them up** with `GET https://hermes.pyth.network/v2/price_feeds?query=<SYMBOL>&asset_type=crypto`, pick `Crypto.<SYMBOL>/USD`, pin in `src/core/pyth.ts` with a comment and the lookup date. Expected (verify, do not trust blindly): SOL/USD `ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d`, BTC/USD `e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43`, ETH/USD `ff61491a931112ddf1bd8147cd1b641375f79f82825126335ef5d8d6f3e1a3b6`. Save one real Hermes response per endpoint as a test fixture.
 
+### Assets and price source (overrides the lines above where they conflict, 2026-10-06)
+- `ASSETS = ['SOL', 'SKR']`. Remove BTC/ETH/JUP/BONK from code, feed ids and tests.
+- SKR feed: look up `GET https://hermes.pyth.network/v2/price_feeds?query=SKR&asset_type=crypto` (this metadata endpoint worked without a key). If a `Crypto.SKR/USD` feed exists, pin its id with the lookup date. If not, set `FEED_IDS.SKR = null`, note it in NOTES.md, and SKR uses the mock source even when a Pyth key exists.
+- `src/core/price.ts`: `interface PriceSource { kind: 'pyth' | 'mock'; latest(asset): Promise<PythPrice>; at(asset, ts): Promise<PythPrice | null> }`.
+  - `pythSource(fetchFn, opts)` wraps the existing `fetchLatestPrice` / `fetchPriceAt`.
+  - `mockSource(nowFn)`: deterministic, pure; base prices SOL 150, SKR 0.05; price(ts) = base × (1 + 0.04·sin(ts/5400) + 0.015·sin(ts/977)), rounded to 4 significant digits for SKR, 2 decimals for SOL; `at(asset, ts)` returns null if ts > nowFn() (not yet resolvable), else the formula at ts; `publishTime = ts`.
+  - `selectPriceSource(env, fetchFn, nowFn)` → mock unless key set and `EXPO_PUBLIC_PRICE_SOURCE !== 'mock'`; per-asset fallback to mock when the feed id is null.
+- App code must get prices only through the selected `PriceSource` (hook `usePriceSource()`), never by calling `fetchLatestPrice`/`fetchPriceAt` directly.
+- `isDemo` (source kind === 'mock' for that asset) is shown as a DEMO PRICES badge on New Receipt (price hint), list rows with HIT/MISS, Receipt detail, and Profile; share text gets the `[DEMO PRICES — not real results]` prefix.
+
 ## Secrets
 AsyncStorage key `rcpt:secret:<hash>` → `{ json: string; salt: string }`. Saved **before** the commit transaction is signed. If signing is rejected, delete it. "Export secrets" = JSON array of all entries copied to clipboard.
 

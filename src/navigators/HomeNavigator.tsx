@@ -1,12 +1,19 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import React from "react";
 import { TopBar } from "../components/top-bar/top-bar-feature";
-import { HomeScreen } from "../screens/HomeScreen";
+import { ReceiptsListScreen } from "../screens/ReceiptsListScreen";
 import MaterialCommunityIcon from "@expo/vector-icons/MaterialCommunityIcons";
 import { useTheme } from "react-native-paper";
 import { NewReceiptScreen } from "../screens/NewReceiptScreen";
+import { ProfileScreen } from "../screens/ProfileScreen";
 
-const Tab = createBottomTabNavigator();
+export type HomeTabParamList = {
+  Home: undefined;
+  New: undefined;
+  Profile: undefined;
+};
+
+const Tab = createBottomTabNavigator<HomeTabParamList>();
 
 /**
  * This is the main navigator with a bottom tab bar.
@@ -38,12 +45,21 @@ export function HomeNavigator() {
                   color={color}
                 />
               );
+            case "Profile":
+              return (
+                <MaterialCommunityIcon
+                  name={focused ? "account-circle" : "account-circle-outline"}
+                  size={size}
+                  color={color}
+                />
+              );
           }
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Home" component={ReceiptsListScreen} options={{ title: "Receipts" }} />
       <Tab.Screen name="New" component={NewReceiptScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }

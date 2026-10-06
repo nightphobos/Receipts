@@ -10,3 +10,4 @@
 [2026-10-06 23:01:43] iter 10/60 · open: 11 · next: T010 `src/chain/fetchHistory.ts`: `getSignaturesForAddress` + batched `get
 [2026-10-06 23:03:57] iter 11/60 · open: 10 · next: T011 `src/storage/secrets.ts`: save/load/delete/exportAll over AsyncStorag
 [2026-10-06 23:05:06] iter 12/60 · open: 9 · next: T012 New Receipt screen: asset picker, above/below toggle, target input wi
+[2026-10-06 23:08:19] iter 13/60 · open: 8 · next: T013 Receipts list (home): connect state, pull-to-refresh from chain, stat

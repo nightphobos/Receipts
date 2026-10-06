@@ -21,7 +21,7 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 
 ## Phase 3 — App
 - [x] T012 New Receipt screen: asset picker, above/below toggle, target input with live Pyth hint, deadline presets + custom, validation messages from `validateCall`, Seal button → save secret → MWA sign & send memo (reuse template utilities) → haptic → navigate to detail. First-seal warning about local secrets. `yarn typecheck` green.
-- [ ] T013 Receipts list (home): connect state, pull-to-refresh from chain, status chips with colours, countdown for `sealed`, empty state. Wire navigation for all screens.
+- [x] T013 Receipts list (home): connect state, pull-to-refresh from chain, status chips with colours, countdown for `sealed`, empty state. Wire navigation for all screens.
 - [ ] T014 Receipt detail: call details, commit/reveal Solscan links, Reveal button only when status is `awaiting_reveal` and the secret exists locally, resolution with price at deadline, retry for `unresolved`, haptic on reveal.
 - [ ] T015 Profile: hit-rate and counts from `stats`, "Copy share text" (hit-rate + last 5 receipts with Solscan links), "Export secrets", cluster indicator.
 - [ ] T016 Polish: app display name `Receipts`, simple icon/splash from a solid colour + text (no copyrighted art), error toasts for RPC/wallet failures, loading states.

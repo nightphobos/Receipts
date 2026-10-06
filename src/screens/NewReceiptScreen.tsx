@@ -5,11 +5,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getRandomBytes } from "expo-crypto";
 import * as Haptics from "expo-haptics";
 import { useNavigation } from "@react-navigation/native";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ASSETS, type Asset, type Direction } from "../core/call";
 import { DEADLINE_PRESETS, draftCall, parseCustomHours } from "../core/draft";
+import { formatUsd } from "../core/format";
 import { fetchLatestPrice } from "../core/pyth";
+import { RECEIPTS_QUERY_KEY } from "../hooks/useReceipts";
 import { isUserRejection, sealCall } from "../chain/seal";
 import { useAuthorization } from "../utils/useAuthorization";
 import { useMobileWallet } from "../utils/useMobileWallet";
@@ -19,10 +21,6 @@ import { alertAndLog } from "../utils/alertAndLog";
 
 const WARNED_KEY = "rcpt:warned-local-secrets";
 const CUSTOM = "custom";
-
-export function formatUsd(p: number): string {
-  return p >= 1 ? p.toFixed(2) : p.toPrecision(4);
-}
 
 function useLatestPrice(asset: Asset) {
   return useQuery({
@@ -57,6 +55,7 @@ export function NewReceiptScreen() {
   const { connection } = useConnection();
   const wallet = useMobileWallet();
   const navigation = useNavigation();
+  const queryClient = useQueryClient();
 
   const [asset, setAsset] = useState<Asset>("SOL");
   const [dir, setDir] = useState<Direction>("above");
@@ -98,6 +97,7 @@ export function NewReceiptScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTargetText("");
       setTried(false);
+      queryClient.invalidateQueries({ queryKey: [RECEIPTS_QUERY_KEY] });
       navigation.navigate("ReceiptDetail", { hash, signature });
     } catch (e) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -110,7 +110,7 @@ export function NewReceiptScreen() {
     } finally {
       setSealing(false);
     }
-  }, [selectedAccount, asset, dir, targetText, durationSec, connection, wallet, navigation]);
+  }, [selectedAccount, asset, dir, targetText, durationSec, connection, wallet, navigation, queryClient]);
 
   if (!selectedAccount) {
     return (

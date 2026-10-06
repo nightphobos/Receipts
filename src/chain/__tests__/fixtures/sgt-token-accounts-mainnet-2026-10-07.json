@@ -1,0 +1,40 @@
+{
+  "_source": "mainnet getTokenAccountsByOwner(Token-2022) jsonParsed for 4ZGj29TZeZDGpxqSAue4JcMGu24MQA5USC6td6X2SXVd, slot 454015792",
+  "owner": "4ZGj29TZeZDGpxqSAue4JcMGu24MQA5USC6td6X2SXVd",
+  "value": [
+    {
+      "pubkey": "EChYET5BHiVTe7nDHrDxY3g5YQCuU3DRvawi7up5VEbL",
+      "account": {
+        "lamports": 1513840,
+        "data": {
+          "program": "spl-token-2022",
+          "parsed": {
+            "info": {
+              "extensions": [
+                {
+                  "extension": "immutableOwner"
+                }
+              ],
+              "isNative": false,
+              "mint": "4od8gaWFaiXGqwdPiYyXp3X9Mdt7ne5kiVEoBWL7Ht8V",
+              "owner": "4ZGj29TZeZDGpxqSAue4JcMGu24MQA5USC6td6X2SXVd",
+              "state": "frozen",
+              "tokenAmount": {
+                "amount": "1",
+                "decimals": 0,
+                "uiAmount": 1.0,
+                "uiAmountString": "1"
+              }
+            },
+            "type": "account"
+          },
+          "space": 170
+        },
+        "owner": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+        "executable": false,
+        "rentEpoch": 18446744073709551615,
+        "space": 170
+      }
+    }
+  ]
+}

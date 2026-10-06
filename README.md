@@ -157,5 +157,5 @@ The app is built from the Solana Mobile Expo template (Expo 52, React Native 0.7
 - **Public RPC.** The default mainnet RPC is rate-limited. For heavier use, set `EXPO_PUBLIC_RPC_URL` to a private endpoint.
 - **Mainnet only**, plus devnet set at build time. The cluster can't be switched inside the app.
 - **Android only**, since Mobile Wallet Adapter doesn't exist on iOS.
-- **Seeker Genesis badge** is not implemented yet (task T020).
+- **Seeker verified badge** (Profile) checks the wallet's Token-2022 accounts for a Seeker Genesis Token (mint authority `GT2zuHVaZQYZSyQMgJPLzvkmyztfyXg2NJunqFp4p3A4`, group `GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te`); it is cosmetic and only meaningful on mainnet.
 - The Pyth API key, if set, is bundled into the APK. That is acceptable for a hackathon demo, not for production.

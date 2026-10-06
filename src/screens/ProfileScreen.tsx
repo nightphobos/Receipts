@@ -11,6 +11,8 @@ import { useReceipts } from "../hooks/useReceipts";
 import { useNowSec } from "../hooks/useNow";
 import { usePriceSource } from "../hooks/usePriceSource";
 import { DemoBadge } from "../components/receipt/demo-badge";
+import { SeekerBadge } from "../components/receipt/seeker-badge";
+import { useSeekerGenesis } from "../hooks/useSeekerGenesis";
 import { useCluster } from "../components/cluster/cluster-data-access";
 import { ConnectButton } from "../components/sign-in/sign-in-ui";
 import { useAuthorization } from "../utils/useAuthorization";
@@ -31,6 +33,7 @@ export function ProfileScreen() {
   const { selectedCluster } = useCluster();
   const demo = usePriceSource().kind === "mock";
   const receipts = useReceipts(selectedAccount?.publicKey);
+  const genesis = useSeekerGenesis(selectedAccount?.publicKey);
   const now = useNowSec();
   const [toast, setToast] = useState<string | null>(null);
 
@@ -61,7 +64,13 @@ export function ProfileScreen() {
       <ScrollView
         contentContainerStyle={styles.screenContainer}
         refreshControl={
-          <RefreshControl refreshing={receipts.isRefetching} onRefresh={() => receipts.refetch()} />
+          <RefreshControl
+            refreshing={receipts.isRefetching}
+            onRefresh={() => {
+              receipts.refetch();
+              genesis.refetch();
+            }}
+          />
         }
       >
         <View style={styles.row}>
@@ -70,9 +79,16 @@ export function ProfileScreen() {
         </View>
 
         {selectedAccount ? (
-          <Text selectable variant="bodySmall" style={[styles.gapSmall, styles.muted]}>
-            {ellipsify(selectedAccount.publicKey.toBase58(), 8)}
-          </Text>
+          <>
+            <Text selectable variant="bodySmall" style={[styles.gapSmall, styles.muted]}>
+              {ellipsify(selectedAccount.publicKey.toBase58(), 8)}
+            </Text>
+            {genesis.data === true && (
+              <View style={styles.gapSmall}>
+                <SeekerBadge />
+              </View>
+            )}
+          </>
         ) : (
           <View style={styles.gap}>
             <Text style={styles.gapSmall}>Connect a wallet to see your hit-rate.</Text>

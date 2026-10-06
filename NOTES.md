@@ -8,12 +8,12 @@
 
 **Blocked / open:**
 - T006 `[!]` — Pyth Hermes needs an API key (401 without). App uses a deterministic mock and shows DEMO PRICES badges everywhere. Fix: put `EXPO_PUBLIC_PYTH_API_KEY=...` in `.env`, rebuild (env vars are inlined at bundle time), re-record the two `*.docshape.json` fixtures from real responses.
-- T020 — Seeker Genesis Token badge, not started (next task).
+- T020 — Seeker Genesis Token badge done after T019 (see T020 entry); latest APK is `dist/receipts-20261007-0004.apk`.
 - Never run on a device: `adb devices` was empty for T017/T024/T019. No real seal/reveal transaction has been sent yet.
 
 **Test on the Seeker:**
 1. Enable USB debugging, connect, `adb devices` shows it.
-2. `adb install -r dist/receipts-20261007-0000.apk` (uninstall first if an older debug-signed build complains about signatures).
+2. `adb install -r dist/receipts-20261007-0004.apk` (uninstall first if an older debug-signed build complains about signatures).
 3. Open Receipts → Connect (Seed Vault wallet, mainnet). Needs a little SOL for fees (~0.00001 SOL per memo + priority fee).
 4. New tab → SOL, above, target, deadline 1 h → Seal → approve in wallet. Dismiss the local-secret warning. Detail screen should open; list shows SEALED with countdown.
 5. After the deadline (within 24 h): open the receipt → Reveal → approve. After refresh it shows HIT/MISS with a DEMO badge. Check both memos on Solscan.
@@ -124,3 +124,8 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 
 ## T019 — done 2026-10-07
 - Gates green (321 tests, tsc clean); incremental release build OK (log `.ralph/logs/t019-gradle.log`) → `dist/receipts-20261007-0000.apk`, bundle contains "DEMO PRICES". No device attached → not installed. Morning summary written at top.
+
+## T020 — done 2026-10-07
+- `src/core/genesis.ts`: `isSeekerGenesisMint(mint, parsed)` = Token-2022 mint with mintAuthority `GT2zuHV…`, `tokenGroupMember` {group `GT22s89…`, mint == itself}, and `groupMemberPointer` (if present) pointing at itself; `heldMints` (positive balances). Fixtures are real mainnet jsonParsed accounts (member mint `4od8ga…` #121124, group mint, owner `4ZGj29…` token accounts).
+- `src/chain/genesis.ts` `hasSeekerGenesisToken(conn, owner)`: getParsedTokenAccountsByOwner(Token-2022) → getMultipleParsedAccounts in batches of 100, mint account owner must be Token-2022. Hook `useSeekerGenesis` (silent on errors, 1 h staleTime); purple "Seeker verified" chip in Profile under the address. Avoided importing `@solana/spl-token` in chain code (jest bigint warning) — program id pinned as `TOKEN_2022_PROGRAM`.
+- APK rebuilt: `dist/receipts-20261007-0004.apk` (bundle contains "Seeker verified"); log `.ralph/logs/t020-gradle.log`. `adb devices` empty → not installed.

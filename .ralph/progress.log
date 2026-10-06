@@ -8,3 +8,4 @@
 [2026-10-06 22:59:15] iter 8/60 · open: 13 · next: T008 `src/core/history.ts`: from a list of `{ signature, blockTime, signer
 [2026-10-06 23:00:36] iter 9/60 · open: 12 · next: T009 `src/chain/memoTx.ts`: build the Memo instruction/transaction (progra
 [2026-10-06 23:01:43] iter 10/60 · open: 11 · next: T010 `src/chain/fetchHistory.ts`: `getSignaturesForAddress` + batched `get
+[2026-10-06 23:03:57] iter 11/60 · open: 10 · next: T011 `src/storage/secrets.ts`: save/load/delete/exportAll over AsyncStorag

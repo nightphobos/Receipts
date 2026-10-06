@@ -46,3 +46,7 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 - `src/chain/fetchHistory.ts`: `fetchMemoHistory(conn: HistoryConnection, wallet, {pageSize?, maxSignatures?, prefilterByMemo?})` → `MemoTx[]` (newest first). Pages `getSignaturesForAddress` with `before` until exhausted (whole history, so old misses can't silently drop), `getParsedTransactions` in batches of 50 with `maxSupportedTransactionVersion: 0`. Pass the app's `Connection` directly (it satisfies `HistoryConnection`).
 - Decision: by default only fetches sigs whose signature-info `memo` contains `rcpt:1:` and `err == null` (saves public-RPC calls); `prefilterByMemo: false` if an RPC doesn't fill `memo`. Memos: parsed spl-memo (top-level + inner), else `Program log: Memo (len N): "..."` lines (only `\"`/`\\` unescaped). Tx kept only if wallet is a signer; `signer` set to wallet.
 - Fixture `src/chain/__tests__/fixtures/parsed-tx-memo-mainnet-2026-10-06.json` = real mainnet jsonParsed tx (public RPC worked without key); tests clone it and swap in rcpt memos.
+
+## T011 — done 2026-10-06
+- `src/storage/secrets.ts` (pure, no RN import): `KeyValueStore` interface — pass `AsyncStorage` directly (type-checked compatible). `saveSecret(store, hash, {json,salt})` throws unless sha256(json|salt) == hash; `loadSecret` → `Secret|null` (null on missing/corrupt/mismatch); `deleteSecret`; `exportAll` → `[{hash,json,salt}]` sorted by hash; `exportSecretsJson` = clipboard string.
+- Jest roots now include `src/storage`. T012: save secret before signing, `deleteSecret` if wallet rejects.

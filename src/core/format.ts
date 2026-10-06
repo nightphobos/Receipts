@@ -33,3 +33,9 @@ export function callFromJson(json: string): Call | null {
     return null;
   }
 }
+
+/** Solscan tx link; `?cluster=` only for devnet/testnet (anything else is treated as mainnet). */
+export function solscanTxUrl(signature: string, cluster?: string): string {
+  const base = `https://solscan.io/tx/${signature}`;
+  return cluster === "devnet" || cluster === "testnet" ? `${base}?cluster=${cluster}` : base;
+}

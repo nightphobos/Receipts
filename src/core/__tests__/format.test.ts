@@ -1,5 +1,5 @@
 import type { Call } from "../call";
-import { callFromJson, describeCall, formatCountdown, formatUsd } from "../format";
+import { callFromJson, describeCall, formatCountdown, formatUsd, solscanTxUrl } from "../format";
 
 const CALL: Call = { v: 1, asset: "SOL", dir: "above", target: 250.5, deadline: 1800086400, created: 1800000000 };
 const JSON_SOL = '{"v":1,"asset":"SOL","dir":"above","target":250.5,"deadline":1800086400,"created":1800000000}';
@@ -55,5 +55,20 @@ describe("callFromJson", () => {
     expect(callFromJson("not json")).toBeNull();
     expect(callFromJson('{"v":2}')).toBeNull();
     expect(callFromJson("null")).toBeNull();
+  });
+});
+
+describe("solscanTxUrl", () => {
+  const SIG = "5h6xBEauJ3PK6SWCZ1PGjBvj8vDdWG3KpwATGy1ARAXFSDwt8GFXM7W5Ncn16wmqokgpiKRLuS83KUxyZyv2sUYv";
+  it("has no cluster param on mainnet", () => {
+    expect(solscanTxUrl(SIG, "mainnet-beta")).toBe(`https://solscan.io/tx/${SIG}`);
+    expect(solscanTxUrl(SIG)).toBe(`https://solscan.io/tx/${SIG}`);
+  });
+  it("adds ?cluster= for devnet and testnet", () => {
+    expect(solscanTxUrl(SIG, "devnet")).toBe(`https://solscan.io/tx/${SIG}?cluster=devnet`);
+    expect(solscanTxUrl(SIG, "testnet")).toBe(`https://solscan.io/tx/${SIG}?cluster=testnet`);
+  });
+  it("treats unknown clusters as mainnet", () => {
+    expect(solscanTxUrl(SIG, "custom")).toBe(`https://solscan.io/tx/${SIG}`);
   });
 });

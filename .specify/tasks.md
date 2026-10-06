@@ -4,7 +4,7 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 
 ## Phase 0 — Baseline
 - [x] T001 Read the template code (wallet connect, transaction sending, navigation, cluster config) and summarise it in NOTES.md. Run `yarn install` and `npx tsc --noEmit`; record baseline result. Ensure `.gitignore` covers `node_modules`, `android/build`, `android/app/build`, `dist`, `.env*`, `.ralph/logs`.
-- [ ] T002 Add `jest` + `ts-jest` for `src/core` and `src/chain` (node env), scripts `test` and `typecheck` in package.json, one trivial passing test. Both commands green.
+- [x] T002 Add `jest` + `ts-jest` for `src/core` and `src/chain` (node env), scripts `test` and `typecheck` in package.json, one trivial passing test. Both commands green.
 
 ## Phase 1 — Core (pure TS, test-first)
 - [ ] T003 `src/core/call.ts`: types, `validateCall(call, nowSec)` (asset list, dir, target > 0 and finite, deadline window now+1h…now+30d, created ≤ now), `canonicalJson(call)` with fixed key order. Tests incl. boundaries.

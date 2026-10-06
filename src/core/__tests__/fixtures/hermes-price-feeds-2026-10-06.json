@@ -1,0 +1,87 @@
+[
+  {
+    "id": "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
+    "market_hours": {
+      "is_open": true,
+      "next_open": null,
+      "next_close": null
+    },
+    "attributes": {
+      "asset_type": "Crypto",
+      "description": "SOLANA / US DOLLAR",
+      "display_symbol": "SOLUSD",
+      "quote_currency": "USD",
+      "schedule": "America/New_York;O,O,O,O,O,O,O;",
+      "symbol": "Crypto.SOL/USD",
+      "min_channel": "real_time"
+    }
+  },
+  {
+    "id": "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
+    "market_hours": {
+      "is_open": true,
+      "next_open": null,
+      "next_close": null
+    },
+    "attributes": {
+      "asset_type": "Crypto",
+      "description": "BITCOIN / US DOLLAR",
+      "display_symbol": "BTCUSD",
+      "quote_currency": "USD",
+      "schedule": "America/New_York;O,O,O,O,O,O,O;",
+      "symbol": "Crypto.BTC/USD",
+      "min_channel": "real_time"
+    }
+  },
+  {
+    "id": "ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
+    "market_hours": {
+      "is_open": true,
+      "next_open": null,
+      "next_close": null
+    },
+    "attributes": {
+      "asset_type": "Crypto",
+      "description": "ETHEREUM / US DOLLAR",
+      "display_symbol": "ETHUSD",
+      "quote_currency": "USD",
+      "schedule": "America/New_York;O,O,O,O,O,O,O;",
+      "symbol": "Crypto.ETH/USD",
+      "min_channel": "real_time"
+    }
+  },
+  {
+    "id": "0a0408d619e9380abad35060f9192039ed5042fa6f82301d0e48bb52be830996",
+    "market_hours": {
+      "is_open": true,
+      "next_open": null,
+      "next_close": null
+    },
+    "attributes": {
+      "asset_type": "Crypto",
+      "description": "JUPITER / US DOLLAR",
+      "display_symbol": "JUPUSD",
+      "quote_currency": "USD",
+      "schedule": "America/New_York;O,O,O,O,O,O,O;",
+      "symbol": "Crypto.JUP/USD",
+      "min_channel": "fixed_rate@200ms"
+    }
+  },
+  {
+    "id": "72b021217ca3fe68922a19aaf990109cb9d84e9ad004b4d2025ad6f529314419",
+    "market_hours": {
+      "is_open": true,
+      "next_open": null,
+      "next_close": null
+    },
+    "attributes": {
+      "asset_type": "Crypto",
+      "description": "BONK / US DOLLAR",
+      "display_symbol": "BONKUSD",
+      "quote_currency": "USD",
+      "schedule": "America/New_York;O,O,O,O,O,O,O;",
+      "symbol": "Crypto.BONK/USD",
+      "min_channel": "real_time"
+    }
+  }
+]

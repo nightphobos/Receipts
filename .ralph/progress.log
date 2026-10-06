@@ -3,3 +3,4 @@
 [2026-10-06 22:51:59] iter 3/60 · open: 18 · next: T003 `src/core/call.ts`: types, `validateCall(call, nowSec)` (asset list, 
 [2026-10-06 22:53:10] iter 4/60 · open: 17 · next: T004 `src/core/commit.ts`: `makeSalt(randomBytes)` (injected), `commitHash
 [2026-10-06 22:54:06] iter 5/60 · open: 16 · next: T005 `src/core/memo.ts`: encode/decode commit and reveal memos per plan, b
+[2026-10-06 22:55:56] iter 6/60 · open: 15 · next: T006 `src/core/pyth.ts`: verified feed IDs for all five assets, `fetchLate

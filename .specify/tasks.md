@@ -11,7 +11,7 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 - [x] T004 `src/core/commit.ts`: `makeSalt(randomBytes)` (injected), `commitHash(json, salt)` with @noble/hashes. Tests with a fixed known vector (compute once, pin it), salt format checks.
 - [x] T005 `src/core/memo.ts`: encode/decode commit and reveal memos per plan, base64url without padding, ≤ 500 bytes assert, all malformed cases → null. Round-trip tests.
 - [!] T006 `src/core/pyth.ts`: verified feed IDs for all five assets, `fetchLatestPrice(asset, fetchFn)`, `fetchPriceAt(asset, ts, fetchFn)`, parsing price × 10^expo. Tests use recorded real Hermes fixtures (save them under `src/core/__tests__/fixtures/`).
-- [ ] T007 `src/core/score.ts`: `statusOf(receipt, nowSec)`, `resolve(call, priceAtDeadline)` (strict compare, equal = miss), `stats(receipts)` (hit-rate excludes pending, forfeited counts as miss). Tests for every status and boundary (exactly deadline, exactly deadline + 24 h).
+- [x] T007 `src/core/score.ts`: `statusOf(receipt, nowSec)`, `resolve(call, priceAtDeadline)` (strict compare, equal = miss), `stats(receipts)` (hit-rate excludes pending, forfeited counts as miss). Tests for every status and boundary (exactly deadline, exactly deadline + 24 h).
 - [ ] T008 `src/core/history.ts`: from a list of `{ signature, blockTime, signer, memo, failed }` build receipts: match reveals to commits by hash and same signer, verify hash and deadline, ignore forged/duplicate/foreign reveals, ignore commits with blockTime > deadline, ignore failed tx. Tests with fixtures covering each rule.
 
 ## Phase 2 — Chain and storage

@@ -32,10 +32,10 @@ describe("resolve", () => {
     expect(resolve({ ...CALL, dir }, price)).toBe(expected);
   });
 
-  it("compares tiny BONK prices strictly", () => {
-    const bonk: Call = { ...CALL, asset: "BONK", target: 0.0000215 };
-    expect(resolve(bonk, 0.0000215)).toBe("miss");
-    expect(resolve(bonk, 0.00002151)).toBe("hit");
+  it("compares tiny SKR prices strictly", () => {
+    const skr: Call = { ...CALL, asset: "SKR", target: 0.0000215 };
+    expect(resolve(skr, 0.0000215)).toBe("miss");
+    expect(resolve(skr, 0.00002151)).toBe("hit");
   });
 
   it.each([NaN, Infinity, -1, 0])("throws on invalid price %p", (p) => {

@@ -14,7 +14,7 @@ const base = (over: Partial<Call> = {}): Call => ({
 
 describe("constants", () => {
   it("has the fixed asset list", () => {
-    expect(ASSETS).toEqual(["SOL", "BTC", "ETH", "JUP", "BONK"]);
+    expect(ASSETS).toEqual(["SOL", "SKR"]);
   });
   it("deadline window is 1h..30d", () => {
     expect(MIN_DEADLINE_SEC).toBe(3600);
@@ -41,6 +41,10 @@ describe("validateCall", () => {
     if (!r.ok) expect(r.errors.join(" ")).toMatch(/asset/i);
   });
 
+  it.each(["BTC", "ETH", "JUP", "BONK"])("rejects dropped asset %s", (asset) => {
+    expect(validateCall({ ...base(), asset }, NOW).ok).toBe(false);
+  });
+
   it("rejects unknown direction", () => {
     expect(validateCall({ ...base(), dir: "sideways" }, NOW).ok).toBe(false);
   });
@@ -59,8 +63,8 @@ describe("validateCall", () => {
     expect(validateCall({ ...base(), target: "100" }, NOW).ok).toBe(false);
   });
 
-  it("accepts tiny positive target (BONK-like)", () => {
-    expect(validateCall(base({ asset: "BONK", target: 0.00002 }), NOW).ok).toBe(true);
+  it("accepts tiny positive target (SKR-like)", () => {
+    expect(validateCall(base({ asset: "SKR", target: 0.00002 }), NOW).ok).toBe(true);
   });
 
   it("deadline exactly now + 1h is valid", () => {
@@ -158,7 +162,7 @@ describe("canonicalJson", () => {
   });
 
   it("serializes target as plain decimal (no exponent)", () => {
-    const json = canonicalJson(base({ asset: "BONK", target: 1e-7 }));
+    const json = canonicalJson(base({ asset: "SKR", target: 1e-7 }));
     expect(json).toContain(`"target":0.0000001,`);
     expect(JSON.parse(json).target).toBe(1e-7);
   });
@@ -169,8 +173,8 @@ describe("canonicalJson", () => {
   });
 
   it("is a stable pinned string", () => {
-    expect(canonicalJson({ v: 1, asset: "BTC", dir: "below", target: 60000, deadline: 1800086400, created: 1800000000 })).toBe(
-      '{"v":1,"asset":"BTC","dir":"below","target":60000,"deadline":1800086400,"created":1800000000}',
+    expect(canonicalJson({ v: 1, asset: "SKR", dir: "below", target: 0.05, deadline: 1800086400, created: 1800000000 })).toBe(
+      '{"v":1,"asset":"SKR","dir":"below","target":0.05,"deadline":1800086400,"created":1800000000}',
     );
   });
 });

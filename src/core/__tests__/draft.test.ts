@@ -41,10 +41,10 @@ describe("DEADLINE_PRESETS", () => {
 
 describe("draftCall", () => {
   it("builds a valid call with created = now, deadline = now + duration", () => {
-    const r = draftCall({ asset: "BONK", dir: "below", targetText: "0,00002", durationSec: 86400 }, NOW);
+    const r = draftCall({ asset: "SKR", dir: "below", targetText: "0,00002", durationSec: 86400 }, NOW);
     expect(r).toEqual({
       ok: true,
-      call: { v: 1, asset: "BONK", dir: "below", target: 0.00002, deadline: NOW + 86400, created: NOW },
+      call: { v: 1, asset: "SKR", dir: "below", target: 0.00002, deadline: NOW + 86400, created: NOW },
     });
   });
 

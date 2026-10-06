@@ -4,14 +4,11 @@ import type { Asset } from "./call";
 /**
  * Pyth mainnet feed ids (Crypto.<SYMBOL>/USD), looked up 2026-10-06 via
  * GET https://hermes.pyth.network/v2/price_feeds?query=<SYMBOL>&asset_type=crypto
- * Note: ETH differs from the id suggested in plan.md; this is the one Hermes returned.
+ * null = no Pyth feed for that asset (callers must fall back to another price source).
  */
-export const FEED_IDS: Record<Asset, string> = {
+export const FEED_IDS: Record<Asset, string | null> = {
   SOL: "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
-  BTC: "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
-  ETH: "ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
-  JUP: "0a0408d619e9380abad35060f9192039ed5042fa6f82301d0e48bb52be830996",
-  BONK: "72b021217ca3fe68922a19aaf990109cb9d84e9ad004b4d2025ad6f529314419",
+  SKR: "38846ec4d0dbe808091817f5c0d6ab8058e25422348ddf97db52b6c378a93bf9",
 };
 
 export const HERMES_URL = "https://hermes.pyth.network";
@@ -71,9 +68,11 @@ export function parseHermesPrice(body: unknown, asset: Asset): PythPrice | null 
 }
 
 async function get(path: string, asset: Asset, fetchFn: FetchFn, opts: PythOptions) {
+  const id = FEED_IDS[asset];
+  if (!id) throw new Error(`No Pyth feed for ${asset}`);
   const base = (opts.baseUrl ?? HERMES_URL).replace(/\/+$/, "");
   const headers: Record<string, string> = opts.apiKey ? { Authorization: `Bearer ${opts.apiKey}` } : {};
-  return fetchFn(`${base}/v2/updates/price/${path}?ids[]=${FEED_IDS[asset]}&parsed=true`, { headers });
+  return fetchFn(`${base}/v2/updates/price/${path}?ids[]=${id}&parsed=true`, { headers });
 }
 
 /** Current price (hint on the New Receipt screen). Throws on HTTP/parse failure. */

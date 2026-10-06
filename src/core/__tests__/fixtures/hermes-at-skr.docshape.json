@@ -1,0 +1,31 @@
+{
+  "_note": "NOT a live recording: Hermes /v2/updates/price/<ts> returned 401 (API key required) on 2026-10-06. Shape copied from the Hermes v2 docs; values hand-set for publish_time 1759752000. Replace with a real response once a key is available (see NOTES.md T006).",
+  "binary": {
+    "encoding": "hex",
+    "data": [
+      "504e4155"
+    ]
+  },
+  "parsed": [
+    {
+      "id": "38846ec4d0dbe808091817f5c0d6ab8058e25422348ddf97db52b6c378a93bf9",
+      "price": {
+        "price": "5012345",
+        "conf": "1234",
+        "expo": -8,
+        "publish_time": 1759752000
+      },
+      "ema_price": {
+        "price": "5010000",
+        "conf": "1200",
+        "expo": -8,
+        "publish_time": 1759752000
+      },
+      "metadata": {
+        "slot": 260000000,
+        "proof_available_time": 1759752001,
+        "prev_publish_time": 1759751999
+      }
+    }
+  ]
+}

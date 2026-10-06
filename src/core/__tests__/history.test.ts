@@ -13,7 +13,7 @@ const SALT_A = "000102030405060708090a0b0c0d0e0f";
 const SALT_B = "f0e0d0c0b0a090807060504030201000";
 
 const CALL_A: Call = { v: 1, asset: "SOL", dir: "above", target: 250.5, deadline: DEADLINE, created: CREATED };
-const CALL_B: Call = { v: 1, asset: "BONK", dir: "below", target: 0.0000215, deadline: DEADLINE + 3600, created: CREATED };
+const CALL_B: Call = { v: 1, asset: "SKR", dir: "below", target: 0.0000215, deadline: DEADLINE + 3600, created: CREATED };
 
 const JSON_A = canonicalJson(CALL_A);
 const JSON_B = canonicalJson(CALL_B);

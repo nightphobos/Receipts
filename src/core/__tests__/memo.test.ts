@@ -120,8 +120,8 @@ describe("reveal memo", () => {
     });
   });
 
-  it("round-trips a tiny BONK target", () => {
-    const call: Call = { v: 1, asset: "BONK", dir: "below", target: 0.0000123, deadline: 1800086400, created: 1800000000 };
+  it("round-trips a tiny SKR target", () => {
+    const call: Call = { v: 1, asset: "SKR", dir: "below", target: 0.0000123, deadline: 1800086400, created: 1800000000 };
     const json = canonicalJson(call);
     const memo = encodeRevealMemo(json, SALT);
     expect(decodeRevealMemo(memo)).toEqual({ kind: "reveal", hash: commitHash(json, SALT), json, call, salt: SALT });
@@ -130,7 +130,7 @@ describe("reveal memo", () => {
   it("is ≤ 500 bytes for realistic calls", () => {
     const call: Call = {
       v: 1,
-      asset: "BONK",
+      asset: "SKR",
       dir: "below",
       target: 0.000012345678901234,
       deadline: 1802592000,

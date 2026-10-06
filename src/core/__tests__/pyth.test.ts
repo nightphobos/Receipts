@@ -10,7 +10,7 @@ import {
 } from "../pyth";
 import feeds from "./fixtures/hermes-price-feeds-2026-10-06.json";
 import latestSol from "./fixtures/hermes-latest-sol.docshape.json";
-import atBonk from "./fixtures/hermes-at-bonk.docshape.json";
+import atSkr from "./fixtures/hermes-at-skr.docshape.json";
 
 type Req = { url: string; headers: Record<string, string> };
 
@@ -71,7 +71,7 @@ describe("parseHermesPrice", () => {
   });
 
   it("returns null for a foreign feed id", () => {
-    expect(parseHermesPrice(latestSol, "BTC")).toBeNull();
+    expect(parseHermesPrice(latestSol, "SKR")).toBeNull();
   });
 
   it("returns null on malformed bodies", () => {
@@ -118,27 +118,27 @@ describe("fetchPriceAt", () => {
   const TS = 1759752000;
 
   it("calls the timestamp endpoint and returns the price", async () => {
-    const { fn, reqs } = fakeFetch(200, atBonk);
-    const p = await fetchPriceAt("BONK", TS, fn);
-    expect(p).toEqual({ asset: "BONK", price: 0.0002012345, conf: 0.0000001234, publishTime: TS });
-    expect(reqs[0].url).toBe(`${HERMES_URL}/v2/updates/price/${TS}?ids[]=${FEED_IDS.BONK}&parsed=true`);
+    const { fn, reqs } = fakeFetch(200, atSkr);
+    const p = await fetchPriceAt("SKR", TS, fn);
+    expect(p).toEqual({ asset: "SKR", price: 0.05012345, conf: 0.00001234, publishTime: TS });
+    expect(reqs[0].url).toBe(`${HERMES_URL}/v2/updates/price/${TS}?ids[]=${FEED_IDS.SKR}&parsed=true`);
   });
 
   it("returns null when Hermes has no price yet (404)", async () => {
-    expect(await fetchPriceAt("BONK", TS, fakeFetch(404, {}).fn)).toBeNull();
+    expect(await fetchPriceAt("SKR", TS, fakeFetch(404, {}).fn)).toBeNull();
   });
 
   it("rejects a price published before the requested timestamp", async () => {
-    await expect(fetchPriceAt("BONK", TS + 1, fakeFetch(200, atBonk).fn)).rejects.toThrow();
+    await expect(fetchPriceAt("SKR", TS + 1, fakeFetch(200, atSkr).fn)).rejects.toThrow();
   });
 
   it("rejects non-integer timestamps without fetching", async () => {
-    const { fn, reqs } = fakeFetch(200, atBonk);
-    await expect(fetchPriceAt("BONK", 1.5, fn)).rejects.toThrow();
+    const { fn, reqs } = fakeFetch(200, atSkr);
+    await expect(fetchPriceAt("SKR", 1.5, fn)).rejects.toThrow();
     expect(reqs).toHaveLength(0);
   });
 
   it("throws on other HTTP errors", async () => {
-    await expect(fetchPriceAt("BONK", TS, fakeFetch(500, {}).fn)).rejects.toThrow(/500/);
+    await expect(fetchPriceAt("SKR", TS, fakeFetch(500, {}).fn)).rejects.toThrow(/500/);
   });
 });

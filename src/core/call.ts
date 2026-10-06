@@ -1,6 +1,6 @@
 /** Call types, validation and canonical JSON. Pure TS: no RN/Expo imports. */
 
-export const ASSETS = ["SOL", "BTC", "ETH", "JUP", "BONK"] as const;
+export const ASSETS = ["SOL", "SKR"] as const;
 export type Asset = (typeof ASSETS)[number];
 
 export const DIRECTIONS = ["above", "below"] as const;

@@ -43,7 +43,7 @@ describe("formatCountdown", () => {
 describe("describeCall", () => {
   it("renders asset, direction and target", () => {
     expect(describeCall(CALL)).toBe("SOL above $250.50");
-    expect(describeCall({ ...CALL, asset: "BONK", dir: "below", target: 0.00002 })).toBe("BONK below $0.00002000");
+    expect(describeCall({ ...CALL, asset: "SKR", dir: "below", target: 0.00002 })).toBe("SKR below $0.00002000");
   });
 });
 

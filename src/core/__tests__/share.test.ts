@@ -33,7 +33,7 @@ describe("formatHitRate", () => {
 describe("shareText", () => {
   const past = NOW - 100_000; // deadline more than 24 h ago
   const hit = receipt(1, past - 7200, past, { call: call(past), price: 300 });
-  const miss = receipt(2, past - 7000, past, { call: call(past, { dir: "below", asset: "BTC", target: 50000 }), price: 60000 });
+  const miss = receipt(2, past - 7000, past, { call: call(past, { dir: "below", asset: "SKR", target: 0.04 }), price: 0.06 });
   const forfeited = receipt(3, past - 6800, past);
   const sealed = receipt(4, NOW - 100, NOW + 3600);
 
@@ -50,7 +50,7 @@ describe("shareText", () => {
     expect(lines.slice(i + 1, i + 5)).toEqual([
       "• SEALED hidden call — https://solscan.io/tx/sig4",
       "• FORFEITED hidden call — https://solscan.io/tx/sig3",
-      "• MISS BTC below $50000.00 (Pyth $60000.00) — https://solscan.io/tx/sig2 · reveal https://solscan.io/tx/rev2",
+      "• MISS SKR below $0.04000 (Pyth $0.06000) — https://solscan.io/tx/sig2 · reveal https://solscan.io/tx/rev2",
       "• HIT SOL above $250.00 (Pyth $300.00) — https://solscan.io/tx/sig1 · reveal https://solscan.io/tx/rev1",
     ]);
   });

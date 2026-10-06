@@ -9,6 +9,8 @@ import { formatHitRate, shareText } from "../core/share";
 import { exportAll } from "../storage/secrets";
 import { useReceipts } from "../hooks/useReceipts";
 import { useNowSec } from "../hooks/useNow";
+import { usePriceSource } from "../hooks/usePriceSource";
+import { DemoBadge } from "../components/receipt/demo-badge";
 import { useCluster } from "../components/cluster/cluster-data-access";
 import { ConnectButton } from "../components/sign-in/sign-in-ui";
 import { useAuthorization } from "../utils/useAuthorization";
@@ -27,6 +29,7 @@ function StatBox({ label, value }: { label: string; value: number | string }) {
 export function ProfileScreen() {
   const { selectedAccount } = useAuthorization();
   const { selectedCluster } = useCluster();
+  const demo = usePriceSource().kind === "mock";
   const receipts = useReceipts(selectedAccount?.publicKey);
   const now = useNowSec();
   const [toast, setToast] = useState<string | null>(null);
@@ -35,7 +38,7 @@ export function ProfileScreen() {
   const s = useMemo(() => stats(list, now), [list, now]);
 
   const copyShareText = async () => {
-    await Clipboard.setStringAsync(shareText(list, Math.floor(Date.now() / 1000), selectedCluster.network));
+    await Clipboard.setStringAsync(shareText(list, Math.floor(Date.now() / 1000), selectedCluster.network, { demo }));
     setToast("Share text copied");
   };
 
@@ -94,6 +97,14 @@ export function ProfileScreen() {
                 </>
               ) : (
                 <>
+                  {demo && (
+                    <View style={styles.demoRow}>
+                      <DemoBadge />
+                      <Text variant="bodySmall" style={[styles.muted, styles.demoNote]}>
+                        Scored against demo prices — not real results
+                      </Text>
+                    </View>
+                  )}
                   <Text variant="bodyMedium" style={styles.muted}>Hit-rate</Text>
                   <Text variant="displayMedium" style={styles.bold}>{formatHitRate(s.hitRate)}</Text>
                   <Text variant="bodySmall" style={styles.muted}>
@@ -149,6 +160,8 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: "row", justifyContent: "space-between" },
   statBox: { alignItems: "center", flex: 1 },
   bold: { fontWeight: "bold" },
+  demoRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  demoNote: { flex: 1, marginLeft: 8 },
   gap: { marginTop: 12 },
   gapSmall: { marginTop: 6 },
   muted: { opacity: 0.7 },

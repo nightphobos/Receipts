@@ -10,8 +10,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ASSETS, type Asset, type Direction } from "../core/call";
 import { DEADLINE_PRESETS, draftCall, parseCustomHours } from "../core/draft";
 import { formatUsd } from "../core/format";
-import { fetchLatestPrice } from "../core/pyth";
+import { isDemo } from "../core/price";
 import { RECEIPTS_QUERY_KEY } from "../hooks/useReceipts";
+import { usePriceSource } from "../hooks/usePriceSource";
+import { DemoBadge } from "../components/receipt/demo-badge";
 import { isUserRejection, sealCall } from "../chain/seal";
 import { useAuthorization } from "../utils/useAuthorization";
 import { useMobileWallet } from "../utils/useMobileWallet";
@@ -24,10 +26,10 @@ const WARNED_KEY = "rcpt:warned-local-secrets";
 const CUSTOM = "custom";
 
 function useLatestPrice(asset: Asset) {
+  const source = usePriceSource();
   return useQuery({
-    queryKey: ["pyth-latest", asset],
-    queryFn: () =>
-      fetchLatestPrice(asset, fetch, { apiKey: process.env.EXPO_PUBLIC_PYTH_API_KEY }),
+    queryKey: ["price-latest", source.kindOf(asset), asset],
+    queryFn: () => source.latest(asset),
     refetchInterval: 15_000,
     retry: 1,
   });
@@ -66,6 +68,9 @@ export function NewReceiptScreen() {
   const [tried, setTried] = useState(false);
   const [sealing, setSealing] = useState(false);
 
+  const priceSource = usePriceSource();
+  const demo = isDemo(priceSource, asset);
+  const priceName = demo ? "demo" : "Pyth";
   const price = useLatestPrice(asset);
   const durationSec = preset === CUSTOM ? parseCustomHours(customHours) : Number(preset);
   const nowSec = Math.floor(Date.now() / 1000);
@@ -137,13 +142,16 @@ export function NewReceiptScreen() {
         onValueChange={(v) => setAsset(v as Asset)}
         buttons={ASSETS.map((a) => ({ value: a, label: a }))}
       />
-      <HelperText type="info" visible>
-        {price.isLoading
-          ? "Loading Pyth price…"
-          : price.data
-            ? `Pyth now: $${formatUsd(price.data.price)}`
-            : "Pyth price unavailable"}
-      </HelperText>
+      <View style={styles.hintRow}>
+        <HelperText type="info" visible>
+          {price.isLoading
+            ? `Loading ${priceName} price…`
+            : price.data
+              ? `${demo ? "Demo price" : "Pyth"} now: $${formatUsd(price.data.price)}`
+              : `${priceName} price unavailable`}
+        </HelperText>
+        {demo && <DemoBadge />}
+      </View>
 
       <Text variant="labelLarge" style={styles.label}>Price at deadline will be</Text>
       <SegmentedButtons
@@ -215,6 +223,7 @@ export function NewReceiptScreen() {
 }
 
 const styles = StyleSheet.create({
+  hintRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   screenContainer: {
     padding: 16,
   },

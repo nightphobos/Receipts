@@ -90,3 +90,7 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 ## T022 — done 2026-10-06
 - `src/core/price.ts`: `PriceSource { kind, kindOf(asset), latest, at }` + `isDemo(source, asset)`. Added `kindOf` beyond plan's interface because of per-asset fallback; `kind` is conservative ("mock" if ANY asset is mock) — use it for global badges (Profile, share prefix), `isDemo(src, asset)` for per-row badges.
 - `mockSource(nowFn)`: `mockPrice` formula per plan, conf 0, `at` null if ts > now, throws on non-integer ts; `latest` uses floor(now). `selectPriceSource(env, fetchFn, nowFn, feedIds = FEED_IDS)`: key trimmed; empty/whitespace key → mock. T023: build it in `usePriceSource()` from `process.env.EXPO_PUBLIC_*` (inline literal access so Expo bundles them), `fetch`, `() => Date.now()/1000`.
+
+## T023 — done 2026-10-06
+- `src/hooks/usePriceSource.ts`: module-level `selectPriceSource` from inlined `EXPO_PUBLIC_PYTH_API_KEY`/`EXPO_PUBLIC_PRICE_SOURCE`; no app code calls `fetchLatestPrice`/`fetchPriceAt` directly anymore. `useReceipts` resolves via `source.at` (query key now includes `source.kind`); New Receipt hint via `source.latest` (key `["price-latest", kind, asset]`).
+- `DemoBadge` (`src/components/receipt/demo-badge.tsx`, yellow chip) on: New Receipt price hint, list rows with HIT/MISS, Receipt detail (any known call), Profile stats card. Labels say "Demo price" instead of "Pyth" when mock. `shareText(..., { demo })` adds `DEMO_SHARE_PREFIX` first line and "demo price $x" (tested). Android bundle export OK.

@@ -6,9 +6,12 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { describeCall, formatCountdown, formatUsd } from "../core/format";
+import { isDemo } from "../core/price";
 import { REVEAL_GRACE_SEC, statusOf, type Status } from "../core/score";
 import { useReceipts, type ReceiptRow } from "../hooks/useReceipts";
 import { useNowSec } from "../hooks/useNow";
+import { usePriceSource } from "../hooks/usePriceSource";
+import { DemoBadge } from "../components/receipt/demo-badge";
 import { StatusChip } from "../components/receipt/status-chip";
 import { ConnectButton } from "../components/sign-in/sign-in-ui";
 import { useAuthorization } from "../utils/useAuthorization";
@@ -20,7 +23,7 @@ type Nav = CompositeNavigationProp<
   NativeStackNavigationProp<RootStackParamList>
 >;
 
-function statusLine(row: ReceiptRow, status: Status, now: number): string {
+function statusLine(row: ReceiptRow, status: Status, now: number, demo: boolean): string {
   const { receipt } = row;
   switch (status) {
     case "sealed":
@@ -32,15 +35,19 @@ function statusLine(row: ReceiptRow, status: Status, now: number): string {
     case "forfeited":
       return "Not revealed in time — counts as a miss";
     case "unresolved":
-      return now < receipt.deadline ? "Revealed early — waiting for deadline" : "Waiting for Pyth price";
+      return now < receipt.deadline
+        ? "Revealed early — waiting for deadline"
+        : `Waiting for ${demo ? "demo" : "Pyth"} price`;
     case "hit":
     case "miss":
-      return `Pyth at deadline: $${formatUsd(receipt.priceAtDeadline as number)}`;
+      return `${demo ? "Demo price" : "Pyth"} at deadline: $${formatUsd(receipt.priceAtDeadline as number)}`;
   }
 }
 
 function ReceiptItem({ row, now, onPress }: { row: ReceiptRow; now: number; onPress: () => void }) {
   const status = statusOf(row.receipt, now);
+  const priceSource = usePriceSource();
+  const demo = row.call !== null && isDemo(priceSource, row.call.asset);
   return (
     <Card style={styles.card} onPress={onPress}>
       <Card.Content>
@@ -50,7 +57,12 @@ function ReceiptItem({ row, now, onPress }: { row: ReceiptRow; now: number; onPr
           </Text>
           <StatusChip status={status} />
         </View>
-        <Text variant="bodyMedium" style={styles.gapSmall}>{statusLine(row, status, now)}</Text>
+        {demo && (status === "hit" || status === "miss") && (
+          <View style={styles.gapSmall}>
+            <DemoBadge />
+          </View>
+        )}
+        <Text variant="bodyMedium" style={styles.gapSmall}>{statusLine(row, status, now, demo)}</Text>
         <Text variant="bodySmall" style={styles.muted}>
           {`Deadline ${new Date(row.receipt.deadline * 1000).toLocaleString()}`}
         </Text>

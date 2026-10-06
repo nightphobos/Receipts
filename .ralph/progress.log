@@ -17,3 +17,4 @@
 [2026-10-06 23:16:09] iter 17/60 · open: 4 · next: T017 Android release build per plan → `dist/receipts-*.apk`; `adb install 
 [2026-10-06 23:37:04] iter 18/60 · open: 7 · next: T021 Assets → `['SOL', 'SKR']` per plan "Assets and price source": update 
 [2026-10-06 23:38:37] iter 19/60 · open: 6 · next: T022 `src/core/price.ts`: `PriceSource`, `pythSource`, `mockSource`, `sele
+[2026-10-06 23:39:52] iter 20/60 · open: 5 · next: T023 Wire the app to `usePriceSource()` everywhere prices are read (New Re

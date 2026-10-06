@@ -32,7 +32,7 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 ## Phase 4a — SOL/SKR focus + mock prices (added 2026-10-06 by the human; do these before T018)
 - [x] T021 Assets → `['SOL', 'SKR']` per plan "Assets and price source": update `call.ts`, `pyth.ts` FEED_IDS (look up SKR feed, null if absent), drafts/format/UI pickers and all tests/fixtures that used BTC/ETH/JUP/BONK. Gates green.
 - [x] T022 `src/core/price.ts`: `PriceSource`, `pythSource`, `mockSource`, `selectPriceSource` per plan, test-first (determinism, null for future ts, per-asset fallback, env selection).
-- [ ] T023 Wire the app to `usePriceSource()` everywhere prices are read (New Receipt hint, useReceipts resolution, detail retry). DEMO PRICES badge on every price/HIT/MISS surface and share-text prefix when mock. `yarn typecheck` green and `npx expo export --platform android` bundles.
+- [x] T023 Wire the app to `usePriceSource()` everywhere prices are read (New Receipt hint, useReceipts resolution, detail retry). DEMO PRICES badge on every price/HIT/MISS surface and share-text prefix when mock. `yarn typecheck` green and `npx expo export --platform android` bundles.
 - [ ] T024 Rebuild the release APK (as in T017) with the new code, `adb install -r` if a device is connected; record result in NOTES.md.
 
 - [ ] T018 README.md: what it is, the commit/reveal formula and how to verify a receipt by hand from two memos, build/run commands, architecture, known limitations (local secrets, no web view yet, **demo prices until a Pyth API key is set** — how to set `EXPO_PUBLIC_PYTH_API_KEY` in `.env`).

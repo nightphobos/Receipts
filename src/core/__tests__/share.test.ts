@@ -1,6 +1,6 @@
 import type { Call } from "../call";
 import type { Receipt } from "../score";
-import { formatHitRate, shareText, SHARE_LAST_N } from "../share";
+import { DEMO_SHARE_PREFIX, formatHitRate, shareText, SHARE_LAST_N } from "../share";
 
 const NOW = 1_800_000_000;
 const sig = (n: number) => `sig${n}`;
@@ -96,5 +96,22 @@ describe("shareText", () => {
     expect(text.split("\n").pop()).toBe(
       "Sealed as sha256 commit memos on Solana, revealed later, scored against Pyth. Unrevealed = miss.",
     );
+  });
+
+  describe("demo prices", () => {
+    it("prefixes the text and never labels demo prices as Pyth", () => {
+      const text = shareText([hit, miss], NOW, "mainnet-beta", { demo: true });
+      const lines = text.split("\n");
+      expect(lines[0]).toBe(DEMO_SHARE_PREFIX);
+      expect(DEMO_SHARE_PREFIX).toBe("[DEMO PRICES — not real results]");
+      expect(lines[1]).toBe("My Receipts hit-rate: 50% (1 hit / 2 scored, 0 forfeited, 0 pending)");
+      expect(text).toContain("• HIT SOL above $250.00 (demo price $300.00)");
+      expect(text).not.toContain("(Pyth $");
+    });
+
+    it("has no prefix with real prices", () => {
+      expect(shareText([hit], NOW, "mainnet-beta", { demo: false })).not.toContain("DEMO");
+      expect(shareText([hit], NOW, "mainnet-beta")).not.toContain("DEMO");
+    });
   });
 });

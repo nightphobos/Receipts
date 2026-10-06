@@ -7,11 +7,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { describeCall, formatCountdown, formatUsd, solscanTxUrl } from "../core/format";
+import { isDemo } from "../core/price";
 import { REVEAL_GRACE_SEC, statusOf, type Status } from "../core/score";
 import { canReveal, revealReceipt } from "../chain/reveal";
 import { isUserRejection } from "../chain/seal";
 import { RECEIPTS_QUERY_KEY, useReceipts, type ReceiptRow } from "../hooks/useReceipts";
 import { useNowSec } from "../hooks/useNow";
+import { usePriceSource } from "../hooks/usePriceSource";
+import { DemoBadge } from "../components/receipt/demo-badge";
 import { StatusChip } from "../components/receipt/status-chip";
 import { useCluster } from "../components/cluster/cluster-data-access";
 import { useAuthorization } from "../utils/useAuthorization";
@@ -39,7 +42,7 @@ function TxLink({ label, signature, cluster }: { label: string; signature: strin
   );
 }
 
-function Resolution({ row, status, now }: { row: ReceiptRow; status: Status; now: number }) {
+function Resolution({ row, status, now, demo }: { row: ReceiptRow; status: Status; now: number; demo: boolean }) {
   const { receipt } = row;
   switch (status) {
     case "sealed":
@@ -59,7 +62,7 @@ function Resolution({ row, status, now }: { row: ReceiptRow; status: Status; now
         <Text variant="bodyLarge">
           {now < receipt.deadline
             ? `Revealed early. Resolves after the deadline (${formatCountdown(receipt.deadline - now)}).`
-            : "Pyth price at the deadline is not available yet."}
+            : `${demo ? "Demo" : "Pyth"} price at the deadline is not available yet.`}
         </Text>
       );
     case "hit":
@@ -68,7 +71,7 @@ function Resolution({ row, status, now }: { row: ReceiptRow; status: Status; now
       const price = receipt.priceAtDeadline as number;
       return (
         <Text variant="bodyLarge">
-          {`Pyth ${call.asset}/USD at deadline: $${formatUsd(price)} — ${call.dir} $${formatUsd(call.target)}: ${
+          {`${demo ? "Demo price" : "Pyth"} ${call.asset}/USD at deadline: $${formatUsd(price)} — ${call.dir} $${formatUsd(call.target)}: ${
             status === "hit" ? "HIT" : "MISS"
           }`}
         </Text>
@@ -82,6 +85,7 @@ export function ReceiptDetailScreen({ route }: Props) {
   const { selectedAccount } = useAuthorization();
   const { connection } = useConnection();
   const { selectedCluster } = useCluster();
+  const priceSource = usePriceSource();
   const wallet = useMobileWallet();
   const queryClient = useQueryClient();
   const receipts = useReceipts(selectedAccount?.publicKey);
@@ -162,6 +166,7 @@ export function ReceiptDetailScreen({ route }: Props) {
   const { receipt, call } = row;
   const status = statusOf(receipt, now);
   const pendingReveal = sentReveal !== null && !receipt.reveal;
+  const demo = call !== null && isDemo(priceSource, call.asset);
 
   return (
     <ScrollView contentContainerStyle={styles.screenContainer} refreshControl={refresh}>
@@ -177,9 +182,15 @@ export function ReceiptDetailScreen({ route }: Props) {
         </Text>
       )}
 
+      {demo && (
+        <View style={styles.gapSmall}>
+          <DemoBadge />
+        </View>
+      )}
+
       <Card style={styles.gap}>
         <Card.Content>
-          <Resolution row={row} status={status} now={now} />
+          <Resolution row={row} status={status} now={now} demo={demo} />
         </Card.Content>
         {status === "unresolved" && (
           <Card.Actions>

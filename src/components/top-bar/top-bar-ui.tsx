@@ -7,6 +7,7 @@ import { useState } from "react";
 import * as Clipboard from "expo-clipboard";
 import { Linking } from "react-native";
 import { useCluster } from "../cluster/cluster-data-access";
+import { showErrorToast } from "../ui/toast";
 
 export function TopBarWalletButton({
   selectedAccount,
@@ -21,7 +22,11 @@ export function TopBarWalletButton({
       icon="wallet"
       mode="contained-tonal"
       style={{ alignSelf: "center" }}
-      onPress={selectedAccount ? openMenu : connect}
+      onPress={
+        selectedAccount
+          ? openMenu
+          : () => connect().catch((e) => showErrorToast("Wallet connect failed", e))
+      }
     >
       {selectedAccount
         ? ellipsify(selectedAccount.publicKey.toBase58())
@@ -91,8 +96,12 @@ export function TopBarWalletMenu() {
       />
       <Menu.Item
         onPress={async () => {
-          await disconnect();
           closeMenu();
+          try {
+            await disconnect();
+          } catch (e) {
+            showErrorToast("Disconnect failed", e);
+          }
         }}
         title="Disconnect"
         leadingIcon="link-off"

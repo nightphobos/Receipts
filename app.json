@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "receipts",
+    "name": "Receipts",
     "slug": "receipts",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,21 +9,21 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#111827"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.solana.mobile.expo.template"
+      "bundleIdentifier": "com.clockin.receipts"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#111827"
       },
-      "package": "com.solana.mobile.expo.template"
+      "package": "com.clockin.receipts"
     },
     "web": {
       "favicon": "./assets/favicon.png"

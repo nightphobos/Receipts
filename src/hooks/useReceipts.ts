@@ -53,6 +53,7 @@ export function useReceipts(wallet: PublicKey | undefined) {
   return useQuery({
     queryKey: [RECEIPTS_QUERY_KEY, connection.rpcEndpoint, wallet?.toBase58()],
     enabled: !!wallet,
+    meta: { errorToast: "Couldn't read receipts from RPC" },
     queryFn: async (): Promise<ReceiptRow[]> => {
       if (!wallet) return [];
       const txs = await fetchMemoHistory(connection, wallet);

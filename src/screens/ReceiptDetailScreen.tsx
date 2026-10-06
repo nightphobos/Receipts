@@ -18,6 +18,7 @@ import { useAuthorization } from "../utils/useAuthorization";
 import { useMobileWallet } from "../utils/useMobileWallet";
 import { useConnection } from "../utils/ConnectionProvider";
 import { alertAndLog } from "../utils/alertAndLog";
+import { showToast } from "../components/ui/toast";
 import type { RootStackParamList } from "../navigators/AppNavigator";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ReceiptDetail">;
@@ -114,7 +115,7 @@ export function ReceiptDetailScreen({ route }: Props) {
       setTimeout(() => queryClient.invalidateQueries({ queryKey: [RECEIPTS_QUERY_KEY] }), 3000);
     } catch (e) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      if (isUserRejection(e)) alertAndLog("Not revealed", "Signing was cancelled. Nothing was sent.");
+      if (isUserRejection(e)) showToast("Not revealed: signing was cancelled, nothing was sent.");
       else alertAndLog("Reveal failed", e instanceof Error ? e.message : String(e));
     } finally {
       setRevealing(false);

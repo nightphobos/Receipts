@@ -1,7 +1,7 @@
 import { transact } from "@solana-mobile/mobile-wallet-adapter-protocol";
 import { useState, useCallback } from "react";
 import { Button } from "react-native-paper";
-import { alertAndLog } from "../../utils/alertAndLog";
+import { showErrorToast } from "../ui/toast";
 import { useAuthorization } from "../../utils/useAuthorization";
 import { useMobileWallet } from "../../utils/useMobileWallet";
 
@@ -17,10 +17,7 @@ export function ConnectButton() {
       setAuthorizationInProgress(true);
       await connect();
     } catch (err: any) {
-      alertAndLog(
-        "Error during connect",
-        err instanceof Error ? err.message : err
-      );
+      showErrorToast("Wallet connect failed", err);
     } finally {
       setAuthorizationInProgress(false);
     }
@@ -49,14 +46,11 @@ export function SignInButton() {
       setSignInInProgress(true);
       await signIn({
         domain: "yourdomain.com",
-        statement: "Sign into Expo Template App",
+        statement: "Sign into Receipts",
         uri: "https://yourdomain.com",
       });
     } catch (err: any) {
-      alertAndLog(
-        "Error during sign in",
-        err instanceof Error ? err.message : err
-      );
+      showErrorToast("Wallet sign-in failed", err);
     } finally {
       setSignInInProgress(false);
     }

@@ -18,6 +18,7 @@ import { useMobileWallet } from "../utils/useMobileWallet";
 import { useConnection } from "../utils/ConnectionProvider";
 import { ConnectButton } from "../components/sign-in/sign-in-ui";
 import { alertAndLog } from "../utils/alertAndLog";
+import { showToast } from "../components/ui/toast";
 
 const WARNED_KEY = "rcpt:warned-local-secrets";
 const CUSTOM = "custom";
@@ -101,7 +102,7 @@ export function NewReceiptScreen() {
       navigation.navigate("ReceiptDetail", { hash, signature });
     } catch (e) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      if (isUserRejection(e)) alertAndLog("Not sealed", "Signing was cancelled. Nothing was sent.");
+      if (isUserRejection(e)) showToast("Not sealed: signing was cancelled, nothing was sent.");
       else
         alertAndLog(
           "Seal failed",

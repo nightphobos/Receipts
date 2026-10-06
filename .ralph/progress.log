@@ -13,3 +13,4 @@
 [2026-10-06 23:08:19] iter 13/60 · open: 8 · next: T013 Receipts list (home): connect state, pull-to-refresh from chain, stat
 [2026-10-06 23:10:36] iter 14/60 · open: 7 · next: T014 Receipt detail: call details, commit/reveal Solscan links, Reveal but
 [2026-10-06 23:12:47] iter 15/60 · open: 6 · next: T015 Profile: hit-rate and counts from `stats`, "Copy share text" (hit-rat
+[2026-10-06 23:14:24] iter 16/60 · open: 5 · next: T016 Polish: app display name `Receipts`, simple icon/splash from a solid 

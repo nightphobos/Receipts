@@ -36,7 +36,7 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 - [x] T024 Rebuild the release APK (as in T017) with the new code, `adb install -r` if a device is connected; record result in NOTES.md.
 
 - [x] T018 README.md: what it is, the commit/reveal formula and how to verify a receipt by hand from two memos, build/run commands, architecture, known limitations (local secrets, no web view yet, **demo prices until a Pyth API key is set** — how to set `EXPO_PUBLIC_PYTH_API_KEY` in `.env`).
-- [ ] T019 Final gate: `yarn test`, `yarn typecheck`, release build all green from a clean `git status`. Write a morning summary at the top of NOTES.md: what works, what is blocked, exact steps for the human to test on the Seeker.
+- [x] T019 Final gate: `yarn test`, `yarn typecheck`, release build all green from a clean `git status`. Write a morning summary at the top of NOTES.md: what works, what is blocked, exact steps for the human to test on the Seeker.
 
 ## Phase 5 — Stretch (only if everything above is done)
 - [ ] T020 Seeker verified badge: check Seeker Genesis Token (Token-2022 accounts of the wallet → mint with mintAuthority `GT2zuHVaZQYZSyQMgJPLzvkmyztfyXg2NJunqFp4p3A4` and group `GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te`); show badge in Profile. Core logic tested with fixtures. Rebuild APK.

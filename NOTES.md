@@ -1,6 +1,25 @@
 # NOTES — run log
 
-<!-- Morning summary goes here (task T019). -->
+## Morning summary (T019, 2026-10-07)
+
+**State:** `yarn test` 16 suites / 321 tests pass, `yarn typecheck` clean, release build OK → `dist/receipts-20261007-0000.apk` (65 MB, `com.clockin.receipts`, debug-keystore signed, mainnet-beta + public RPC, DEMO PRICES). Only uncommitted file before this task was the loop's own `.ralph/progress.log`.
+
+**Works (code + unit tests; not yet run on a phone):** seal a SOL/SKR above/below call as a `rcpt:1:` commit memo via MWA, secret kept in AsyncStorage; receipts list rebuilt from on-chain history (status chips, countdowns); reveal within 24 h of the deadline; scoring (unrevealed = miss, late reveals ignored); Profile hit-rate, share text with Solscan links, secret export; README with manual hash verification.
+
+**Blocked / open:**
+- T006 `[!]` — Pyth Hermes needs an API key (401 without). App uses a deterministic mock and shows DEMO PRICES badges everywhere. Fix: put `EXPO_PUBLIC_PYTH_API_KEY=...` in `.env`, rebuild (env vars are inlined at bundle time), re-record the two `*.docshape.json` fixtures from real responses.
+- T020 — Seeker Genesis Token badge, not started (next task).
+- Never run on a device: `adb devices` was empty for T017/T024/T019. No real seal/reveal transaction has been sent yet.
+
+**Test on the Seeker:**
+1. Enable USB debugging, connect, `adb devices` shows it.
+2. `adb install -r dist/receipts-20261007-0000.apk` (uninstall first if an older debug-signed build complains about signatures).
+3. Open Receipts → Connect (Seed Vault wallet, mainnet). Needs a little SOL for fees (~0.00001 SOL per memo + priority fee).
+4. New tab → SOL, above, target, deadline 1 h → Seal → approve in wallet. Dismiss the local-secret warning. Detail screen should open; list shows SEALED with countdown.
+5. After the deadline (within 24 h): open the receipt → Reveal → approve. After refresh it shows HIT/MISS with a DEMO badge. Check both memos on Solscan.
+6. Profile → Copy share text (starts with the demo prefix), Export secrets (JSON in clipboard — keep it; losing it turns open calls into misses).
+7. To rebuild after changes: see README "Build" (incremental `./gradlew assembleRelease` with JDK 21, ~30 s).
+
 
 Iterations append below: `## <task id> — done|attempt N <date>`.
 
@@ -102,3 +121,6 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 ## T018 — done 2026-10-06
 - README.md rewritten (template text dropped): concept, formats, step-by-step manual verification with a worked example (commit/reveal memos, `base64 -d`, `shasum -a 256`) — hash verified independently against `commitHash`, build/run recipe, `.env` vars, architecture, limitations (demo prices, local secrets, 24 h reveal window, no web view, T020 badge pending).
 - README "Build" lists the incremental gradle path (android/ committed); T019 should confirm it from a clean `git status`.
+
+## T019 — done 2026-10-07
+- Gates green (321 tests, tsc clean); incremental release build OK (log `.ralph/logs/t019-gradle.log`) → `dist/receipts-20261007-0000.apk`, bundle contains "DEMO PRICES". No device attached → not installed. Morning summary written at top.

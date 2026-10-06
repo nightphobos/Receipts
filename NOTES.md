@@ -86,3 +86,7 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 ## T021 — done 2026-10-06
 - `ASSETS = ["SOL", "SKR"]`. Hermes metadata lookup found `Crypto.SKR/USD` = `38846ec4d0dbe808091817f5c0d6ab8058e25422348ddf97db52b6c378a93bf9` (pinned; feeds fixture re-recorded with SOL+SKR only via curl — Python urllib gets 403 from Hermes).
 - `FEED_IDS` is typed `Record<Asset, string | null>`; `fetchLatestPrice`/`fetchPriceAt` throw "No Pyth feed for X" on null — T022's per-asset mock fallback should check `FEED_IDS[asset] === null` before calling them. `hermes-at-bonk` fixture → `hermes-at-skr.docshape.json` (still hand-made, expo -8).
+
+## T022 — done 2026-10-06
+- `src/core/price.ts`: `PriceSource { kind, kindOf(asset), latest, at }` + `isDemo(source, asset)`. Added `kindOf` beyond plan's interface because of per-asset fallback; `kind` is conservative ("mock" if ANY asset is mock) — use it for global badges (Profile, share prefix), `isDemo(src, asset)` for per-row badges.
+- `mockSource(nowFn)`: `mockPrice` formula per plan, conf 0, `at` null if ts > now, throws on non-integer ts; `latest` uses floor(now). `selectPriceSource(env, fetchFn, nowFn, feedIds = FEED_IDS)`: key trimmed; empty/whitespace key → mock. T023: build it in `usePriceSource()` from `process.env.EXPO_PUBLIC_*` (inline literal access so Expo bundles them), `fetch`, `() => Date.now()/1000`.

@@ -27,7 +27,7 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 - [x] T016 Polish: app display name `Receipts`, simple icon/splash from a solid colour + text (no copyrighted art), error toasts for RPC/wallet failures, loading states.
 
 ## Phase 4 — Ship
-- [ ] T017 Android release build per plan → `dist/receipts-*.apk`; `adb install -r` if a device is connected (record result). If the build fails, fix and retry within this task; follow constitution rule 11.
+- [x] T017 Android release build per plan → `dist/receipts-*.apk`; `adb install -r` if a device is connected (record result). If the build fails, fix and retry within this task; follow constitution rule 11.
 
 ## Phase 4a — SOL/SKR focus + mock prices (added 2026-10-06 by the human; do these before T018)
 - [ ] T021 Assets → `['SOL', 'SKR']` per plan "Assets and price source": update `call.ts`, `pyth.ts` FEED_IDS (look up SKR feed, null if absent), drafts/format/UI pickers and all tests/fixtures that used BTC/ETH/JUP/BONK. Gates green.

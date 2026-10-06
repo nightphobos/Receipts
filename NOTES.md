@@ -77,3 +77,8 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 
 ## HUMAN — scope change 2026-10-06 ~23:20
 - Assets narrowed to SOL + SKR. Pyth stays mocked until we have an API key (Hermes 401s without one since 2026-08-26). New tasks T021–T024 inserted after T017; spec.md "Price source" and plan.md "Assets and price source" describe them. DEMO PRICES must be visible whenever the mock is active — do not weaken that.
+
+## T017 — done 2026-10-06
+- APK: `dist/receipts-20261006-2336.apk` (65 MB, `com.clockin.receipts`, label "Receipts", minSdk 24, debug-keystore signed, all 4 ABIs). `adb devices` listed no device → not installed. Gradle log: `.ralph/logs/t017-gradle.log`.
+- Build recipe: `npx expo prebuild --platform android --no-install` (android/ now committed; it rewrote `android`/`ios` scripts to `expo run:*`), then in `android/`: `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ANDROID_HOME=/opt/homebrew/share/android-commandlinetools ./gradlew assembleRelease --no-daemon` (~19 min cold; Gradle auto-installed NDK 26.1 into the SDK). Default JDK 23 not used.
+- Cluster fixed at build time: `src/core/cluster.ts` `clusterConfig({cluster, rpcUrl})` from `EXPO_PUBLIC_CLUSTER`/`EXPO_PUBLIC_RPC_URL` (default mainnet-beta + public RPC; only `devnet` alternative). Provider exposes that single cluster; MWA chain `solana:mainnet`/`solana:devnet`; Settings picker is read-only. Env vars are inlined at bundle time → rebuild to change.

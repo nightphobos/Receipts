@@ -13,10 +13,11 @@ import {
 import { toUint8Array } from "js-base64";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
+import { APP_CLUSTER } from "../components/cluster/cluster-data-access";
 
-const CHAIN = "solana";
-const CLUSTER = "devnet";
-const CHAIN_IDENTIFIER = `${CHAIN}:${CLUSTER}`;
+// MWA chain ids: "solana:mainnet" / "solana:devnet" (not "mainnet-beta").
+const CHAIN_IDENTIFIER =
+  APP_CLUSTER.network === "devnet" ? "solana:devnet" : "solana:mainnet";
 
 export type Account = Readonly<{
   address: Base64EncodedAddress;

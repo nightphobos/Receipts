@@ -14,3 +14,4 @@
 [2026-10-06 23:10:36] iter 14/60 · open: 7 · next: T014 Receipt detail: call details, commit/reveal Solscan links, Reveal but
 [2026-10-06 23:12:47] iter 15/60 · open: 6 · next: T015 Profile: hit-rate and counts from `stats`, "Copy share text" (hit-rat
 [2026-10-06 23:14:24] iter 16/60 · open: 5 · next: T016 Polish: app display name `Receipts`, simple icon/splash from a solid 
+[2026-10-06 23:16:09] iter 17/60 · open: 4 · next: T017 Android release build per plan → `dist/receipts-*.apk`; `adb install 

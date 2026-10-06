@@ -1,5 +1,5 @@
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
-import { clusterApiUrl } from "@solana/web3.js";
+import { clusterConfig } from "../../core/cluster";
 import { createContext, ReactNode, useContext, useMemo, useState } from "react";
 
 export interface Cluster {
@@ -30,16 +30,20 @@ export function toWalletAdapterNetwork(
   }
 }
 
+// Fixed at build time: the MWA chain id (useAuthorization) must match, so no runtime switching.
+export const APP_CLUSTER = clusterConfig({
+  cluster: process.env.EXPO_PUBLIC_CLUSTER,
+  rpcUrl: process.env.EXPO_PUBLIC_RPC_URL,
+});
+
 export const defaultClusters: Readonly<Cluster[]> = [
   {
-    name: "devnet",
-    endpoint: clusterApiUrl("devnet"),
-    network: ClusterNetwork.Devnet,
-  },
-  {
-    name: "testnet",
-    endpoint: clusterApiUrl("testnet"),
-    network: ClusterNetwork.Testnet,
+    name: APP_CLUSTER.network,
+    endpoint: APP_CLUSTER.endpoint,
+    network:
+      APP_CLUSTER.network === "devnet"
+        ? ClusterNetwork.Devnet
+        : ClusterNetwork.Mainnet,
   },
 ];
 

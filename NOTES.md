@@ -33,3 +33,7 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 ## T007 — done 2026-10-06
 - `src/core/score.ts`: `Receipt { hash, deadline (from commit memo), commit: TxRef, reveal?: TxRef & {call,json,salt}, priceAtDeadline?: number|null }`; `reveal` must be set only for VALID reveals — T008 owns validity. `statusOf(r, now)`: revealed → `unresolved` if price null/undefined else hit/miss (never forfeits once revealed); else sealed / awaiting_reveal [deadline, deadline+24h) / forfeited.
 - `resolve(call, price)` strict, throws on non-finite/≤0 price. `stats(receipts, now)` → `{total,hits,misses,forfeited,pending,hitRate|null}` (null when nothing scored).
+
+## T008 — done 2026-10-06
+- `src/core/history.ts`: `buildReceipts(txs: MemoTx[], wallet)` → `Receipt[]` newest commit first. `MemoTx = { signature, blockTime: number|null, signer, memo, failed }` — T010 must produce this shape (one entry per rcpt memo). Txs with null blockTime, failed, or signer ≠ wallet are dropped.
+- Decision (honesty): reveal valid only if commit.blockTime ≤ reveal.blockTime < deadline + 24 h (`REVEAL_GRACE_SEC`) — a late reveal must not turn a forfeit into a hit. Early reveals (before deadline) are accepted (status `unresolved` until Pyth price exists). Duplicate commits/reveals: earliest blockTime wins.

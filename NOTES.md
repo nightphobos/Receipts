@@ -98,3 +98,7 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 ## T024 — done 2026-10-06
 - APK: `dist/receipts-20261006-2358.apk` (65 MB) built with T021–T023 code (incremental `./gradlew assembleRelease`, 35 s; no native/app.json changes since T017 so no prebuild). Verified Hermes bundle in APK contains "DEMO PRICES"/"Demo price" strings. Log: `.ralph/logs/t024-gradle.log`.
 - `adb devices` listed no device → not installed. Older `dist/receipts-20261006-2336.apk` is pre-SOL/SKR; ignore it.
+
+## T018 — done 2026-10-06
+- README.md rewritten (template text dropped): concept, formats, step-by-step manual verification with a worked example (commit/reveal memos, `base64 -d`, `shasum -a 256`) — hash verified independently against `commitHash`, build/run recipe, `.env` vars, architecture, limitations (demo prices, local secrets, 24 h reveal window, no web view, T020 badge pending).
+- README "Build" lists the incremental gradle path (android/ committed); T019 should confirm it from a clean `git status`.

@@ -35,7 +35,7 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 - [x] T023 Wire the app to `usePriceSource()` everywhere prices are read (New Receipt hint, useReceipts resolution, detail retry). DEMO PRICES badge on every price/HIT/MISS surface and share-text prefix when mock. `yarn typecheck` green and `npx expo export --platform android` bundles.
 - [x] T024 Rebuild the release APK (as in T017) with the new code, `adb install -r` if a device is connected; record result in NOTES.md.
 
-- [ ] T018 README.md: what it is, the commit/reveal formula and how to verify a receipt by hand from two memos, build/run commands, architecture, known limitations (local secrets, no web view yet, **demo prices until a Pyth API key is set** — how to set `EXPO_PUBLIC_PYTH_API_KEY` in `.env`).
+- [x] T018 README.md: what it is, the commit/reveal formula and how to verify a receipt by hand from two memos, build/run commands, architecture, known limitations (local secrets, no web view yet, **demo prices until a Pyth API key is set** — how to set `EXPO_PUBLIC_PYTH_API_KEY` in `.env`).
 - [ ] T019 Final gate: `yarn test`, `yarn typecheck`, release build all green from a clean `git status`. Write a morning summary at the top of NOTES.md: what works, what is blocked, exact steps for the human to test on the Seeker.
 
 ## Phase 5 — Stretch (only if everything above is done)

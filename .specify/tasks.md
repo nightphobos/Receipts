@@ -16,7 +16,7 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 
 ## Phase 2 — Chain and storage
 - [x] T009 `src/chain/memoTx.ts`: build the Memo instruction/transaction (program id, signer key, UTF-8 data, optional priority fee). Unit test instruction data and keys.
-- [ ] T010 `src/chain/fetchHistory.ts`: `getSignaturesForAddress` + batched `getParsedTransactions`, extract `rcpt:1:` memos (parsed spl-memo, log fallback), map to the T008 input shape. Tests with a mocked Connection and a recorded parsed-transaction fixture.
+- [x] T010 `src/chain/fetchHistory.ts`: `getSignaturesForAddress` + batched `getParsedTransactions`, extract `rcpt:1:` memos (parsed spl-memo, log fallback), map to the T008 input shape. Tests with a mocked Connection and a recorded parsed-transaction fixture.
 - [ ] T011 `src/storage/secrets.ts`: save/load/delete/exportAll over AsyncStorage (injected interface). Tests with an in-memory mock.
 
 ## Phase 3 — App

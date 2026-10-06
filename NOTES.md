@@ -41,3 +41,8 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 ## T009 — done 2026-10-06
 - `src/chain/memoTx.ts`: `MEMO_PROGRAM_ID`, `memoInstruction(signer, memo)` (throws on empty / >500 UTF-8 bytes), `priorityFeeInstruction(microLamports)`, `buildMemoTransaction({signer, memo, recentBlockhash, priorityMicroLamports?})` → unsigned `VersionedTransaction` (legacy message, fee payer = signer; default 10 000 µlamports fee ix first, `0` omits it). T012: get blockhash via `getLatestBlockhashAndContext`, pass `context.slot` as minContextSlot to `signAndSendTransaction` like the template.
 - Removed chain sanity placeholder test.
+
+## T010 — done 2026-10-06
+- `src/chain/fetchHistory.ts`: `fetchMemoHistory(conn: HistoryConnection, wallet, {pageSize?, maxSignatures?, prefilterByMemo?})` → `MemoTx[]` (newest first). Pages `getSignaturesForAddress` with `before` until exhausted (whole history, so old misses can't silently drop), `getParsedTransactions` in batches of 50 with `maxSupportedTransactionVersion: 0`. Pass the app's `Connection` directly (it satisfies `HistoryConnection`).
+- Decision: by default only fetches sigs whose signature-info `memo` contains `rcpt:1:` and `err == null` (saves public-RPC calls); `prefilterByMemo: false` if an RPC doesn't fill `memo`. Memos: parsed spl-memo (top-level + inner), else `Program log: Memo (len N): "..."` lines (only `\"`/`\\` unescaped). Tx kept only if wallet is a signer; `signer` set to wallet.
+- Fixture `src/chain/__tests__/fixtures/parsed-tx-memo-mainnet-2026-10-06.json` = real mainnet jsonParsed tx (public RPC worked without key); tests clone it and swap in rcpt memos.

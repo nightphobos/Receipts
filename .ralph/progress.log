@@ -1,3 +1,4 @@
 [2026-10-06 22:48:02] iter 1/60 · open: 20 · next: T001 Read the template code (wallet connect, transaction sending, navigati
 [2026-10-06 22:51:17] iter 2/60 · open: 19 · next: T002 Add `jest` + `ts-jest` for `src/core` and `src/chain` (node env), scr
 [2026-10-06 22:51:59] iter 3/60 · open: 18 · next: T003 `src/core/call.ts`: types, `validateCall(call, nowSec)` (asset list, 
+[2026-10-06 22:53:10] iter 4/60 · open: 17 · next: T004 `src/core/commit.ts`: `makeSalt(randomBytes)` (injected), `commitHash

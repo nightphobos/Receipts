@@ -8,7 +8,7 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 
 ## Phase 1 — Core (pure TS, test-first)
 - [x] T003 `src/core/call.ts`: types, `validateCall(call, nowSec)` (asset list, dir, target > 0 and finite, deadline window now+1h…now+30d, created ≤ now), `canonicalJson(call)` with fixed key order. Tests incl. boundaries.
-- [ ] T004 `src/core/commit.ts`: `makeSalt(randomBytes)` (injected), `commitHash(json, salt)` with @noble/hashes. Tests with a fixed known vector (compute once, pin it), salt format checks.
+- [x] T004 `src/core/commit.ts`: `makeSalt(randomBytes)` (injected), `commitHash(json, salt)` with @noble/hashes. Tests with a fixed known vector (compute once, pin it), salt format checks.
 - [ ] T005 `src/core/memo.ts`: encode/decode commit and reveal memos per plan, base64url without padding, ≤ 500 bytes assert, all malformed cases → null. Round-trip tests.
 - [ ] T006 `src/core/pyth.ts`: verified feed IDs for all five assets, `fetchLatestPrice(asset, fetchFn)`, `fetchPriceAt(asset, ts, fetchFn)`, parsing price × 10^expo. Tests use recorded real Hermes fixtures (save them under `src/core/__tests__/fixtures/`).
 - [ ] T007 `src/core/score.ts`: `statusOf(receipt, nowSec)`, `resolve(call, priceAtDeadline)` (strict compare, equal = miss), `stats(receipts)` (hit-rate excludes pending, forfeited counts as miss). Tests for every status and boundary (exactly deadline, exactly deadline + 24 h).

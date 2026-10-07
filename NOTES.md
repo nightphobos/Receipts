@@ -1,25 +1,23 @@
 # NOTES — run log
 
-## Morning summary (T019, 2026-10-07)
+## Morning summary (T043, 2026-10-07)
 
-**State:** `yarn test` 16 suites / 321 tests pass, `yarn typecheck` clean, release build OK → `dist/receipts-20261007-0000.apk` (65 MB, `com.clockin.receipts`, debug-keystore signed, mainnet-beta + public RPC, DEMO PRICES). Only uncommitted file before this task was the loop's own `.ralph/progress.log`.
+**State:** `yarn test` 37 suites / 632 tests pass, `yarn typecheck` clean. Release APK `dist/receipts-20261007-1038.apk` (70 MB, `com.clockin.receipts` 1.0.0, debug-keystore signed, v2 rules, Night Register theme). Built from `.env` with Pyth key + custom RPC set, cluster from `.env`. **Installed on the connected Seeker (`<seeker-serial>`) via `adb install -r` — Success**; cold launch smoke test: MainActivity resumed, no FATAL in logcat. Nothing beyond launch was checked on the device; no mainnet tx has been sent by the loop.
 
-**Works (code + unit tests; not yet run on a phone):** seal a SOL/SKR above/below call as a `rcpt:1:` commit memo via MWA, secret kept in AsyncStorage; receipts list rebuilt from on-chain history (status chips, countdowns); reveal within 24 h of the deadline; scoring (unrevealed = miss, late reveals ignored); Profile hit-rate, share text with Solscan links, secret export; README with manual hash verification.
+**Blocked / open (human):**
+- T006 `[!]` — code done; real Hermes fixtures still the hand-made `*.docshape.json` (key now in `.env`; re-record if wanted).
+- T030 `[!]` — devnet faucet 429; 0-lamport registry tag proven only by simulation. The first real v2 seal on the phone is the real test (check Solscan: memo + 0-lamport transfer to `E5YRG7…X5SJ`).
+- GitHub: create repo, push, enable Pages (source = GitHub Actions), add secret `PYTH_API_KEY` (+ optional `INDEXER_RPC_URL`), then set `EXPO_PUBLIC_LEADERBOARD_URL` and rebuild. Until then the RANK tab computes from the registry in-app.
 
-**Blocked / open:**
-- T006 `[!]` — Pyth Hermes needs an API key (401 without). App uses a deterministic mock and shows DEMO PRICES badges everywhere. Fix: put `EXPO_PUBLIC_PYTH_API_KEY=...` in `.env`, rebuild (env vars are inlined at bundle time), re-record the two `*.docshape.json` fixtures from real responses.
-- T020 — Seeker Genesis Token badge done after T019 (see T020 entry); latest APK is `dist/receipts-20261007-0004.apk`.
-- Never run on a device: `adb devices` was empty for T017/T024/T019. No real seal/reveal transaction has been sent yet.
-
-**Test on the Seeker:**
-1. Enable USB debugging, connect, `adb devices` shows it.
-2. `adb install -r dist/receipts-20261007-0004.apk` (uninstall first if an older debug-signed build complains about signatures).
-3. Open Receipts → Connect (Seed Vault wallet, mainnet). Needs a little SOL for fees (~0.00001 SOL per memo + priority fee).
-4. New tab → SOL, above, target, deadline 1 h → Seal → approve in wallet. Dismiss the local-secret warning. Detail screen should open; list shows SEALED with countdown.
-5. After the deadline (within 24 h): open the receipt → Reveal → approve. After refresh it shows HIT/MISS with a DEMO badge. Check both memos on Solscan.
-6. Profile → Copy share text (starts with the demo prefix), Export secrets (JSON in clipboard — keep it; losing it turns open calls into misses).
-7. To rebuild after changes: see README "Build" (incremental `./gradlew assembleRelease` with JDK 21, ~30 s).
-
+**Test on the Seeker (APK already installed):**
+1. **Master key determinism:** connect wallet (mainnet, needs a little SOL) → New tab key-setup card → approve the two signature prompts. Must end in *derived* mode (no "random mode" warning). If it says random, the wallet signs non-deterministically → note it.
+2. **Seal:** New → SOL ▲ or ▼, horizon 1h practice (or 24h) → Seal → approve. Chekko eats; list shows SEALED stamp + countdown + P0. On Solscan the tx has the `rcpt:2:` memo AND a 0-lamport transfer to the registry.
+3. **Reveal on a reinstall:** after the deadline, `adb uninstall com.clockin.receipts && adb install dist/receipts-20261007-1038.apk`, connect the same wallet → open the receipt → "Recover with wallet & reveal" → approve. Ceremony prints P0 → PT, stamps HIT/MISS, haptic. This proves secrets are recoverable without local storage.
+4. **Leaderboard:** RANK tab → OVERALL / SKR DAILY. Your wallet appears only once eligible (practice 1h calls don't count; see README rules). Tap a row → read-only profile, directions hidden until revealed.
+5. **Tip:** on someone else's profile → Tip 10 SKR → approve in wallet (needs SKR + SOL). Own profile has no tip panel.
+6. **Share:** receipt detail → Share sealed call / Share result, Copy. My stats button atop Receipts list → profile v2 numbers.
+7. Visual pass: theme, parallax tilt (disable with system "remove animations"), icon + splash.
+8. Rebuild after changes: README "Build and run" (prebuild --no-install, then `./gradlew assembleRelease` with JDK 21).
 
 Iterations append below: `## <task id> — done|attempt N <date>`.
 
@@ -224,3 +222,6 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 ## T042 — done 2026-10-07
 - README rewritten v2-first: rules (t0, P0/PT, SKR 5-candle median, VOID, forfeit, overlap classes), z/eligibility/SKR Daily, anti-cheat section, derived secrets + phishing trade-off, v2 formats, hand-verification walkthrough with a worked example (dummy master = sha256(64×0x01); base64/shasum/openssl HMAC commands checked in shell), indexer + re-run, tips, human steps (repo, push, Pages, secrets, EXPO_PUBLIC_LEADERBOARD_URL), v1 kept as "Legacy".
 - Build section now includes `npx expo prebuild --platform android --no-install` before gradle (native modules added since v1).
+
+## T043 — done 2026-10-07
+- Prebuild (--no-install) + `assembleRelease` OK → `dist/receipts-20261007-1038.apk`; Seeker `<seeker-serial>` connected → `adb install -r` Success, launch smoke test OK (no FATAL). Morning summary at the top rewritten with the phone test list.

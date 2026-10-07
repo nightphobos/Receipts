@@ -71,7 +71,7 @@ Honesty of the score is the product. Each obvious trick, and why it doesn't pay:
   and sets `master = sha256(signature)` (64-byte ed25519 signature).
 - **Determinism self-check**: the app asks for the signature twice in one session. If both match, master is stored in `expo-secure-store`. If not, the wallet's signatures aren't deterministic: the app falls back to random salts stored only on the phone, shows a warning, and offers "Export secrets".
 - `salt = hex(hmac_sha256(master, "rcpt:2|" + asset + "|" + deadline))[0..32]`.
-- **Recovery** (new phone, reinstall): sign the message again → same master → same salt. The call's `created` must lie in [commit blockTime − 900, commit blockTime] and `dir` is up or down, so the app finds the matching JSON with at most 1802 hashes.
+- **Recovery** (new phone, reinstall): sign the message again → same master → same salt. The call's `created` must lie in [commit blockTime − 900, commit blockTime + 120] (the +120 s covers a phone clock running ahead of the cluster clock) and `dir` is up or down, so the app finds the matching JSON with at most 2042 hashes.
 - **Trade-off**: a phishing app that gets you to sign the exact same text learns your hidden directions early. It can't move funds, and it can't change your calls.
 
 ## Formats (v2)
@@ -230,6 +230,8 @@ These need a person; the build loop doesn't do them.
 3. **Add secrets**: Settings → Secrets and variables → Actions → `PYTH_API_KEY` (Hermes key, required for SOL prices) and optionally `INDEXER_RPC_URL` (a private mainnet RPC).
 4. Run the **indexer** workflow once (Actions → indexer → Run workflow) and open `https://<you>.github.io/receipts/leaderboard.json`.
 5. **Point the app at it**: set `EXPO_PUBLIC_LEADERBOARD_URL=https://<you>.github.io/receipts` in `.env` and rebuild the APK (Expo inlines the value at bundle time).
+
+> **Indexer commits:** the `indexer` workflow commits `indexer-data/` to `master` every 15 minutes when something changed. Before pushing local work run `git pull --rebase`.
 
 ## Build and run
 

@@ -92,7 +92,7 @@ Replaces the absolute-target call. Rationale: with "above $X" a user could seal 
 - On first connect the app asks the wallet to sign the fixed message `Receipts master key v1\nSigning this lets Receipts hide and later reveal your call directions. It cannot move funds.` → `master = sha256(signature)`.
 - Determinism self-check: sign it twice; if the two signatures differ, fall back to v1-style random salts stored locally (+ show "Export secrets" and a warning). Otherwise store master in `expo-secure-store`.
 - `salt = hex(hmac_sha256(master, "rcpt:2|" + asset + "|" + deadline))[0..32]`.
-- Recovery when nothing is stored: re-derive master, then for `created` in [commit blockTime − 900, commit blockTime] and dir in {up, down} find the json whose hash matches (≤ 1802 sha256, fast).
+- Recovery when nothing is stored: re-derive master, then for `created` in [commit blockTime − 900, commit blockTime + 120] (the +120 s covers a phone clock running ahead of the cluster clock) and dir in {up, down} find the json whose hash matches (≤ 2042 sha256, fast).
 - README notes the trade-off: a phishing app that gets you to sign the same text learns your hidden directions early (no funds at risk).
 
 ## On-chain format v2

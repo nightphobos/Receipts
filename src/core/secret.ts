@@ -9,8 +9,13 @@ import { commitHash, isHash } from "./commit";
 export const MASTER_MESSAGE =
   "Receipts master key v1\nSigning this lets Receipts hide and later reveal your call directions. It cannot move funds.";
 
-/** Recovery searches `created` in [commit blockTime − 900, commit blockTime]. */
+/** Recovery searches `created` in [commit blockTime − 900, commit blockTime + 120]. */
 export const RECOVERY_WINDOW_SEC = 900;
+/**
+ * Forward slack: `created` is the phone clock at tap time, `blockTime` the cluster's estimate. If the
+ * phone runs ahead of the cluster clock, `created` can be a little after `blockTime`.
+ */
+export const RECOVERY_SLACK_SEC = 120;
 
 const SIGNATURE_BYTES = 64;
 const MASTER_BYTES = 32;
@@ -67,7 +72,7 @@ export interface RecoveredCall {
 
 /**
  * Rebuild a v2 call from its on-chain commit when nothing is stored locally: try every
- * `created` in [blockTime − 900, blockTime] and both directions (≤ 1802 sha256). Null if none matches.
+ * `created` in [blockTime − 900, blockTime + 120] and both directions (≤ 2042 sha256). Null if none matches.
  */
 export function recoverCall(
   master: Uint8Array,
@@ -77,7 +82,7 @@ export function recoverCall(
   if (!isHash(commit.hash) || !Number.isSafeInteger(blockTime) || !Number.isSafeInteger(commit.deadline))
     return null;
   const salt = saltFor(master, commit.asset, commit.deadline);
-  for (let created = blockTime; created >= blockTime - RECOVERY_WINDOW_SEC; created--) {
+  for (let created = blockTime + RECOVERY_SLACK_SEC; created >= blockTime - RECOVERY_WINDOW_SEC; created--) {
     for (const dir of DIRECTIONS_V2) {
       const call: CallV2 = { v: 2, asset: commit.asset, dir, deadline: commit.deadline, created };
       const json = canonicalJsonV2(call);

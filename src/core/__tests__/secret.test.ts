@@ -2,6 +2,7 @@ import { canonicalJsonV2, type CallV2 } from "../call";
 import { commitHash } from "../commit";
 import {
   MASTER_MESSAGE,
+  RECOVERY_SLACK_SEC,
   RECOVERY_WINDOW_SEC,
   decideMaster,
   masterFromSignature,
@@ -91,7 +92,7 @@ describe("recoverCall", () => {
   it("finds created at both window edges, both directions", () => {
     const blockTime = 1791313600;
     for (const dir of ["up", "down"] as const) {
-      for (const created of [blockTime, blockTime - RECOVERY_WINDOW_SEC]) {
+      for (const created of [blockTime, blockTime - RECOVERY_WINDOW_SEC, blockTime + RECOVERY_SLACK_SEC, blockTime + 3]) {
         const call: CallV2 = { v: 2, asset: "SKR", dir, deadline, created };
         const r = recoverCall(master, commitFor(call), blockTime);
         expect(r?.call).toEqual(call);
@@ -103,7 +104,8 @@ describe("recoverCall", () => {
   it("returns null when created is outside the window", () => {
     const blockTime = 1791313600;
     const early: CallV2 = { v: 2, asset: "SOL", dir: "up", deadline, created: blockTime - RECOVERY_WINDOW_SEC - 1 };
-    const late: CallV2 = { v: 2, asset: "SOL", dir: "up", deadline, created: blockTime + 1 };
+    // phone clock ahead of the cluster by more than the slack
+    const late: CallV2 = { v: 2, asset: "SOL", dir: "up", deadline, created: blockTime + RECOVERY_SLACK_SEC + 1 };
     expect(recoverCall(master, commitFor(early), blockTime)).toBeNull();
     expect(recoverCall(master, commitFor(late), blockTime)).toBeNull();
   });

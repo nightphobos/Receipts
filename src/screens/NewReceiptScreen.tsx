@@ -144,11 +144,14 @@ export function NewReceiptScreen() {
 
   const onSeal = useCallback(async () => {
     if (!selectedAccount) return;
-    const result = draftCallV2({ asset, dir, horizon }, appNowSec());
-    if (!result.ok) return;
+    if (!draftCallV2({ asset, dir, horizon }, appNowSec()).ok) return;
     const state = masterKey.state ?? (await setupMaster());
     if (!state) return;
     if (state.mode === "random" && !(await confirmLocalSecretsWarning())) return;
+    // Draft (created, deadline) only now: first-time key setup can take minutes, and recovery
+    // looks for `created` within 15 min before the commit lands.
+    const result = draftCallV2({ asset, dir, horizon }, appNowSec());
+    if (!result.ok) return;
 
     setSealing(true);
     try {

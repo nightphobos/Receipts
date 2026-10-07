@@ -3,10 +3,15 @@
 export const ASSETS = ["SOL", "SKR"] as const;
 export type Asset = (typeof ASSETS)[number];
 
+/** Legacy v1 directions (absolute target). New calls use DIRECTIONS_V2. */
 export const DIRECTIONS = ["above", "below"] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 
-/** All times are unix seconds. */
+/** v2: direction relative to the market price when the commit lands on chain. */
+export const DIRECTIONS_V2 = ["up", "down"] as const;
+export type DirectionV2 = (typeof DIRECTIONS_V2)[number];
+
+/** Legacy v1 call (absolute target). Decoded for display only; excluded from stats. All times are unix seconds. */
 export interface Call {
   v: 1;
   asset: Asset;
@@ -16,10 +21,21 @@ export interface Call {
   created: number;
 }
 
+/** v2 call: no target. Canonical key order v, asset, dir, deadline, created. All times are unix seconds. */
+export interface CallV2 {
+  v: 2;
+  asset: Asset;
+  dir: DirectionV2;
+  deadline: number;
+  created: number;
+}
+
 export const MIN_DEADLINE_SEC = 3600; // now + 1 h
 export const MAX_DEADLINE_SEC = 30 * 24 * 3600; // now + 30 d
 
 const KEYS = ["v", "asset", "dir", "target", "deadline", "created"] as const;
+
+const KEYS_V2 = ["v", "asset", "dir", "deadline", "created"] as const;
 
 export type ValidationResult = { ok: true; call: Call } | { ok: false; errors: string[] };
 
@@ -82,5 +98,51 @@ export function canonicalJson(call: Call): string {
   return (
     `{"v":${JSON.stringify(call.v)},"asset":${JSON.stringify(call.asset)},"dir":${JSON.stringify(call.dir)},` +
     `"target":${toPlainDecimal(call.target)},"deadline":${JSON.stringify(call.deadline)},"created":${JSON.stringify(call.created)}}`
+  );
+}
+
+export type ValidationResultV2 = { ok: true; call: CallV2 } | { ok: false; errors: string[] };
+
+function schemaErrorsV2(x: unknown): string[] {
+  if (!isPlainObject(x)) return ["Call must be an object"];
+  const errors: string[] = [];
+  if (x.v !== 2) errors.push("Unsupported version");
+  if (!(ASSETS as readonly unknown[]).includes(x.asset)) errors.push(`Asset must be one of ${ASSETS.join(", ")}`);
+  if (!(DIRECTIONS_V2 as readonly unknown[]).includes(x.dir)) errors.push("Direction must be up or down");
+  if (!Number.isSafeInteger(x.deadline)) errors.push("Deadline must be a whole unix timestamp");
+  if (!Number.isSafeInteger(x.created)) errors.push("Created must be a whole unix timestamp");
+  return errors;
+}
+
+/** v2 schema-only guard (exact keys, valid fields); no time window. Used when decoding reveals. */
+export function isCallV2(x: unknown): x is CallV2 {
+  if (!isPlainObject(x)) return false;
+  const keys = Object.keys(x);
+  if (keys.length !== KEYS_V2.length || !KEYS_V2.every((k) => keys.includes(k))) return false;
+  return schemaErrorsV2(x).length === 0;
+}
+
+/** Full validation for a new v2 call at `nowSec`: schema + deadline in [now+1h, now+30d] + created ≤ now. */
+export function validateCallV2(x: unknown, nowSec: number): ValidationResultV2 {
+  const errors = schemaErrorsV2(x);
+  if (isPlainObject(x)) {
+    if (Number.isSafeInteger(x.deadline)) {
+      const d = x.deadline as number;
+      if (d < nowSec + MIN_DEADLINE_SEC) errors.push("Deadline must be at least 1 hour from now");
+      if (d > nowSec + MAX_DEADLINE_SEC) errors.push("Deadline must be at most 30 days from now");
+    }
+    if (Number.isSafeInteger(x.created) && (x.created as number) > nowSec)
+      errors.push("Created time cannot be in the future");
+  }
+  if (errors.length > 0) return { ok: false, errors };
+  const c = x as unknown as CallV2;
+  return { ok: true, call: { v: 2, asset: c.asset, dir: c.dir, deadline: c.deadline, created: c.created } };
+}
+
+/** `{"v":2,"asset":..,"dir":..,"deadline":..,"created":..}` in this exact key order. */
+export function canonicalJsonV2(call: CallV2): string {
+  return (
+    `{"v":${JSON.stringify(call.v)},"asset":${JSON.stringify(call.asset)},"dir":${JSON.stringify(call.dir)},` +
+    `"deadline":${JSON.stringify(call.deadline)},"created":${JSON.stringify(call.created)}}`
   );
 }

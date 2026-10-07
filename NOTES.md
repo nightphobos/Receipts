@@ -149,3 +149,7 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 - Reran `npx tsx scripts/spike-registry.ts`: ed25519 deterministic=true valid=true; airdrop still `429 ... You've either reached your airdrop limit today or the airdrop faucet has run dry`. Simulation of [memo `rcpt:2:test`, 0-lamport transfer → REGISTRY] again `err=null`, both programs `success`.
 - Blocked: needs human to fund devnet key `5wY8DyzUmAVc9Hkv2uhqZuPvQWmeBd3w2Q4gsaAifFBa` via faucet.solana.com (captcha), then rerun the script to confirm real send + `getSignaturesForAddress(REGISTRY)` listing.
 - Chosen approach (from simulation evidence): plain 0-lamport System transfer to REGISTRY, no rent funding. T035 should use it.
+
+## T031 — done 2026-10-07
+- Additive v2 API beside legacy v1 (v1 names unchanged, doc-marked legacy, so app/history keep compiling): `call.ts` `CallV2`/`DIRECTIONS_V2`/`isCallV2`/`validateCallV2`/`canonicalJsonV2`; `memo.ts` `MEMO_PREFIX_V2`, `REGISTRY`, `encode/decode{Commit,Reveal}MemoV2`, `decodeMemoV2`. v2 memo objects carry `v: 2` (v1 ones don't) for discrimination in T034.
+- Commit v2 decode requires asset ∈ ASSETS (uppercase); reveal v2 rejects v1 JSON and verifies hash. Fixed vector in `memoV2.test.ts` computed with shasum/base64. v1 decoders return null for `rcpt:2:` memos; `fetchHistory` still filters on `MEMO_PREFIX` (v1) — T035 must widen it.

@@ -118,6 +118,7 @@ EXPO_PUBLIC_RPC_URL=https://api.mainnet-beta.solana.com # default
 EXPO_PUBLIC_PYTH_API_KEY=<your Pyth Hermes token>       # needed for SOL prices
 EXPO_PUBLIC_MOCK_ASSETS=                                # e.g. SKR → demo prices for that asset only
 EXPO_PUBLIC_PRICE_SOURCE=                               # "mock" forces demo prices even with a key
+EXPO_PUBLIC_LEADERBOARD_URL=                            # indexer GitHub Pages site; unset → Rank tab computes from the registry
 ```
 
 ## Architecture

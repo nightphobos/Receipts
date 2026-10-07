@@ -3,20 +3,20 @@ import React from "react";
 import { TopBar } from "../components/top-bar/top-bar-feature";
 import { ReceiptsListScreen } from "../screens/ReceiptsListScreen";
 import { NewReceiptScreen } from "../screens/NewReceiptScreen";
-import { ProfileScreen } from "../screens/ProfileScreen";
+import { LeaderboardScreen } from "../screens/LeaderboardScreen";
 import { PixelTabBar } from "../theme";
 
 export type HomeTabParamList = {
   Home: undefined;
   New: undefined;
-  Profile: undefined;
+  Rank: undefined;
 };
 
 const Tab = createBottomTabNavigator<HomeTabParamList>();
 
 /**
- * Main navigator: Night Register 3-tab bar (RECEIPTS · NEW · third tab).
- * The third tab is Profile until the leaderboard (T040) turns it into RANK.
+ * Main navigator: Night Register 3-tab bar (RECEIPTS · NEW · RANK).
+ * Own stats (Profile) are a stack screen opened from the Receipts list.
  */
 export function HomeNavigator() {
   return (
@@ -29,7 +29,7 @@ export function HomeNavigator() {
     >
       <Tab.Screen name="Home" component={ReceiptsListScreen} options={{ title: "Receipts" }} />
       <Tab.Screen name="New" component={NewReceiptScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Rank" component={LeaderboardScreen} options={{ title: "Rank" }} />
     </Tab.Navigator>
   );
 }

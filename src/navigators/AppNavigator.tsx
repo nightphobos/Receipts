@@ -27,6 +27,8 @@ export type RootStackParamList = {
   Home: undefined;
   Settings: undefined;
   ReceiptDetail: { hash: string; signature?: string };
+  Profile: undefined;
+  WalletProfile: { wallet: string };
   // 🔥 Your screens go here
 };
 
@@ -60,6 +62,12 @@ const AppStack = () => {
         name="ReceiptDetail"
         component={Screens.ReceiptDetailScreen}
         options={{ title: "Receipt" }}
+      />
+      <Stack.Screen name="Profile" component={Screens.ProfileScreen} options={{ title: "My stats" }} />
+      <Stack.Screen
+        name="WalletProfile"
+        component={Screens.WalletProfileScreen}
+        options={{ title: "Profile" }}
       />
       {/** 🔥 Your screens go here */}
     </Stack.Navigator>

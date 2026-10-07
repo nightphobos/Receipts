@@ -56,7 +56,7 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 - [x] T037 App: reveal ceremony animation + haptic; Profile v2 (zσ, N, hit-rate, hidden & forfeited, streak, legacy section); list/detail show P0/PT and VOID.
 - [x] T038 Share texts (sealed + result) via RN `Share` + copy, exactly per spec; unit-test the text builders in core.
 - [x] T039 `scripts/indexer.ts` + `.github/workflows/indexer.yml` per spec; run once against mainnet locally, commit `site/` sample and `indexer-data/`. Unit-test the aggregation in core.
-- [ ] T040 App Leaderboard tab: overall (≥24h, eligible only) and SKR Daily tabs; from `EXPO_PUBLIC_LEADERBOARD_URL` or computed in-app from the registry if unset; tap → read-only profile of that wallet.
+- [x] T040 App Leaderboard tab: overall (≥24h, eligible only) and SKR Daily tabs; from `EXPO_PUBLIC_LEADERBOARD_URL` or computed in-app from the registry if unset; tap → read-only profile of that wallet.
 - [ ] T041 SKR tips: verify SKR mint, tx builder (idempotent ATA + transfer), Tip 10/50/100 on read-only profiles via MWA. Tests for the builder.
 - [ ] T047 Apply the Night Register theme to every screen (New, Receipts/profile, Detail/Reveal ceremony, Leaderboard, read-only profile + tips, Settings), app icon + splash (pixel register on `#14122B`, no third-party art), remove template leftovers. Match the reference mockups. Bundle exports, release build OK.
 - [ ] T042 README: v2 rules, anti-cheat section (hedging, overlap, sybil/Genesis, VOID, SKR median), how to verify a v2 receipt by hand, indexer/re-run instructions, human steps (create GitHub repo, push, enable Pages, set PYTH secret, set EXPO_PUBLIC_LEADERBOARD_URL).

@@ -200,19 +200,24 @@ export function ReceiptsListScreen() {
         <RefreshControl refreshing={receipts.isRefetching} onRefresh={() => receipts.refetch()} />
       }
       ListHeaderComponent={
-        receipts.isError ? (
-          <Card style={styles.card}>
-            <Card.Content>
-              <Text variant="titleSmall">Couldn't load receipts</Text>
-              <Text variant="bodySmall">
-                {receipts.error instanceof Error ? receipts.error.message : String(receipts.error)}
-              </Text>
-            </Card.Content>
-            <Card.Actions>
-              <Button onPress={() => receipts.refetch()}>Retry</Button>
-            </Card.Actions>
-          </Card>
-        ) : null
+        <>
+          <Button style={styles.statsButton} icon="chart-bar" onPress={() => navigation.navigate("Profile")}>
+            My stats
+          </Button>
+          {receipts.isError ? (
+            <Card style={styles.card}>
+              <Card.Content>
+                <Text variant="titleSmall">Couldn't load receipts</Text>
+                <Text variant="bodySmall">
+                  {receipts.error instanceof Error ? receipts.error.message : String(receipts.error)}
+                </Text>
+              </Card.Content>
+              <Card.Actions>
+                <Button onPress={() => receipts.refetch()}>Retry</Button>
+              </Card.Actions>
+            </Card>
+          ) : null}
+        </>
       }
       ListEmptyComponent={
         receipts.isError ? null : (
@@ -240,4 +245,5 @@ const styles = StyleSheet.create({
   gap: { marginTop: 12 },
   gapSmall: { marginTop: 6 },
   muted: { marginTop: 2, opacity: 0.7 },
+  statsButton: { alignSelf: "flex-end", marginBottom: 8 },
 });

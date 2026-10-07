@@ -1,4 +1,5 @@
-import { selectPriceSource, type PriceSource } from "../core/price";
+import { FEED_IDS } from "../core/pyth";
+import { selectPriceSource, withMockedAssets, type PriceSource } from "../core/price";
 
 // Literal process.env access so Expo inlines the values at bundle time.
 const APP_PRICE_SOURCE: PriceSource = selectPriceSource(
@@ -8,6 +9,8 @@ const APP_PRICE_SOURCE: PriceSource = selectPriceSource(
   },
   (url, init) => fetch(url, init),
   () => Date.now() / 1000,
+  // EXPO_PUBLIC_MOCK_ASSETS=SKR → SKR uses demo prices (badged) even with a Pyth key.
+  withMockedAssets(FEED_IDS, process.env.EXPO_PUBLIC_MOCK_ASSETS),
 );
 
 /** The app's only way to read prices: real Pyth or deterministic demo prices (badge them!). */

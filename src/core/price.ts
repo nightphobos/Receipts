@@ -60,6 +60,17 @@ export interface PriceEnv {
  * Mock unless a Pyth key is set and EXPO_PUBLIC_PRICE_SOURCE !== "mock".
  * Assets without a Pyth feed id fall back to mock individually.
  */
+/** Null out feed ids for assets listed in a CSV (e.g. "SKR"), forcing them onto the demo source. */
+export function withMockedAssets(
+  feedIds: Record<Asset, string | null>,
+  csv: string | undefined,
+): Record<Asset, string | null> {
+  const names = (csv ?? "").split(",").map((x) => x.trim().toUpperCase()).filter(Boolean);
+  const out = { ...feedIds };
+  for (const a of ASSETS) if (names.includes(a)) out[a] = null;
+  return out;
+}
+
 export function selectPriceSource(
   env: PriceEnv,
   fetchFn: FetchFn,

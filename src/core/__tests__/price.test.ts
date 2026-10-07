@@ -1,5 +1,5 @@
 import { FEED_IDS, type FetchFn } from "../pyth";
-import { MOCK_BASE, isDemo, mockPrice, mockSource, pythSource, selectPriceSource } from "../price";
+import { MOCK_BASE, isDemo, mockPrice, mockSource, pythSource, selectPriceSource, withMockedAssets } from "../price";
 import latestSol from "./fixtures/hermes-latest-sol.docshape.json";
 
 type Req = { url: string; headers: Record<string, string> };
@@ -151,5 +151,28 @@ describe("selectPriceSource", () => {
     expect(reqs).toHaveLength(0);
     await s.at("SOL", NOW);
     expect(reqs).toHaveLength(1);
+  });
+});
+
+describe("withMockedAssets", () => {
+  const ids = { SOL: "aa", SKR: "bb" } as const;
+  it("nulls listed assets, case/space-insensitive", () => {
+    expect(withMockedAssets({ ...ids }, " skr ")).toEqual({ SOL: "aa", SKR: null });
+  });
+  it("leaves ids untouched for empty/undefined/unknown", () => {
+    expect(withMockedAssets({ ...ids }, undefined)).toEqual(ids);
+    expect(withMockedAssets({ ...ids }, "")).toEqual(ids);
+    expect(withMockedAssets({ ...ids }, "BTC")).toEqual(ids);
+  });
+  it("does not mutate the input", () => {
+    const input = { ...ids };
+    withMockedAssets(input, "SOL,SKR");
+    expect(input).toEqual(ids);
+  });
+  it("mocked SKR → per-asset demo while SOL stays pyth", () => {
+    const src = selectPriceSource({ EXPO_PUBLIC_PYTH_API_KEY: "k" }, async () => ({ ok: true, status: 200, json: async () => ({}) }), () => 0, withMockedAssets({ ...ids }, "SKR"));
+    expect(src.kindOf("SOL")).toBe("pyth");
+    expect(src.kindOf("SKR")).toBe("mock");
+    expect(src.kind).toBe("mock");
   });
 });

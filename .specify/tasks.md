@@ -40,3 +40,20 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 
 ## Phase 5 — Stretch (only if everything above is done)
 - [x] T020 Seeker verified badge: check Seeker Genesis Token (Token-2022 accounts of the wallet → mint with mintAuthority `GT2zuHVaZQYZSyQMgJPLzvkmyztfyXg2NJunqFp4p3A4` and group `GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te`); show badge in Profile. Core logic tested with fixtures. Rebuild APK.
+
+
+## Phase 6 — v2: up/down, recoverable secrets, leaderboard (added 2026-10-07 by the human; see spec "v2" — overrides older sections where they conflict)
+- [ ] T030 Devnet spike `scripts/spike-registry.ts` (run with tsx): devnet keypair in `.devnet/` (gitignored), airdrop, send ONE tx = [memo `rcpt:2:test`, SystemProgram.transfer 0 lamports signer→REGISTRY]. Confirm success and that `getSignaturesForAddress(REGISTRY)` on devnet returns it. If the 0-lamport transfer fails, try after funding REGISTRY rent-exempt from the devnet key; record exact results and the chosen approach in NOTES.md. Also assert ed25519 (tweetnacl/web3 Keypair) signatures of the master message are deterministic. Devnet only — no mainnet funds.
+- [ ] T031 `src/core`: Call v2 (`dir: up|down`, no target), canonical JSON v2, commit/reveal memo v2 encode/decode (`rcpt:2:`), REGISTRY constant; v1 decoding kept and marked legacy. Test-first.
+- [ ] T032 `src/core/secret.ts`: master from signature bytes, `saltFor(master, asset, deadline)`, `recoverCall(master, commit, blockTime)` brute force per spec. Test-first incl. a fixed vector.
+- [ ] T033 `src/core/price.ts` + `kucoin.ts`: `refTimeForCommit`, `priceAt` per spec (SKR median of 5 closes, SOL Pyth at ts). Test-first with fixtures.
+- [ ] T034 `src/core/score.ts` + `history.ts` v2: statuses hit/miss/void/forfeited/overlap/sealed/awaiting_reveal/unresolved/legacy, horizon class, one-open-position rule, tagged-commit requirement, `zScore`, eligibility, streak, forfeited count. Test-first, every rule.
+- [ ] T035 `src/chain`: memo tx builder adds the registry tag (per T030 outcome); `fetchHistory` sets `tagged`; `fetchRegistry(conn, {before?, until?})` pages all registry signatures → MemoTx[] of all wallets. Tests with mocked Connection.
+- [ ] T036 App seal/reveal v2: master-key setup via MWA `signMessage` (+ determinism double-check, SecureStore, fallback), New screen (asset, ▲/▼, horizon chips 24h default / 3d / 7d / 1h practice, SKR Daily preset, Seal disabled on overlap), seal v2, reveal with recovery when no local secret. `yarn typecheck` green, bundle exports.
+- [ ] T037 App: reveal ceremony animation + haptic; Profile v2 (zσ, N, hit-rate, hidden & forfeited, streak, legacy section); list/detail show P0/PT and VOID.
+- [ ] T038 Share texts (sealed + result) via RN `Share` + copy, exactly per spec; unit-test the text builders in core.
+- [ ] T039 `scripts/indexer.ts` + `.github/workflows/indexer.yml` per spec; run once against mainnet locally, commit `site/` sample and `indexer-data/`. Unit-test the aggregation in core.
+- [ ] T040 App Leaderboard tab: overall (≥24h, eligible only) and SKR Daily tabs; from `EXPO_PUBLIC_LEADERBOARD_URL` or computed in-app from the registry if unset; tap → read-only profile of that wallet.
+- [ ] T041 SKR tips: verify SKR mint, tx builder (idempotent ATA + transfer), Tip 10/50/100 on read-only profiles via MWA. Tests for the builder.
+- [ ] T042 README: v2 rules, anti-cheat section (hedging, overlap, sybil/Genesis, VOID, SKR median), how to verify a v2 receipt by hand, indexer/re-run instructions, human steps (create GitHub repo, push, enable Pages, set PYTH secret, set EXPO_PUBLIC_LEADERBOARD_URL).
+- [ ] T043 Release build, `adb install -r` if a device is connected, update the morning summary at the top of NOTES.md (what to test on the phone: master-key determinism, seal, reveal on a reinstall, leaderboard, tip).

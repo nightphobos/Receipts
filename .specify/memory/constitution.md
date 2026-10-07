@@ -4,8 +4,8 @@ These rules override everything else. If a task conflicts with them, the task is
 
 ## Product
 1. Receipts makes crypto price calls verifiable: commit a hash now, reveal later, unrevealed counts as a miss. Honesty of the score is the product. Never add a code path that lets a user hide, edit or cherry-pick a call.
-2. No custom on-chain program. The only on-chain primitive is the SPL Memo program (`MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`). No token transfers, no escrow, no stakes, no money flows.
-3. No backend server. Everything is read from the Solana RPC and the Pyth Hermes HTTP API.
+2. No custom on-chain program. On-chain primitives: the SPL Memo program (`MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`), a **0-lamport System transfer to the registry address `E5YRG7uSptKAd2T4WbMyK8xadyuZ8v132Ji6XhAxX5SJ`** (an indexing tag only), and **user-initiated SKR tips** (direct wallet→wallet SPL transfer the user approves in the wallet). No escrow, no stakes, no bets, no pooled funds, nothing the app holds.
+3. No backend server. Everything is read from the Solana RPC and public price APIs (Pyth Hermes, KuCoin). The leaderboard indexer is a deterministic script anyone can re-run (GitHub Actions → static files); it is a convenience, never the source of truth.
 
 ## Architecture
 4. All business logic lives in `src/core/` as pure TypeScript with **zero** React Native / Expo imports, so a web build can reuse it later. UI and chain I/O live outside `src/core/`.

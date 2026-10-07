@@ -71,3 +71,16 @@ AsyncStorage key `rcpt:secret:<hash>` → `{ json: string; salt: string }`. Save
 - Copy `android/app/build/outputs/apk/release/app-release.apk` → `dist/receipts-<yyyymmdd-hhmm>.apk`.
 - If `adb devices` lists a device: `adb install -r <apk>`. If not: note it in NOTES.md and continue.
 - App display name: `Receipts`.
+
+
+---
+
+## v2 implementation notes (2026-10-07)
+- Registry: `export const REGISTRY = "E5YRG7uSptKAd2T4WbMyK8xadyuZ8v132Ji6XhAxX5SJ"` in `src/core/memo.ts` (or `registry.ts`). Nobody holds its key.
+- New deps allowed: `expo-secure-store`, `tsx` (dev, for scripts). Use `@noble/hashes/hmac` for HMAC.
+- `MemoTx` gains `tagged: boolean` (tx account keys include REGISTRY) and the commit's `blockTime` is already there.
+- `priceAt` rule lives in `src/core/price.ts` (`refTimeForCommit(blockTime)`, `priceAt(source, asset, ts)`); KuCoin client gets `fetchKucoinMedian5(asset, endTs)` = one candles request `startAt=end-300&endAt=end`.
+- Keep pure logic in `src/core`, I/O injected; indexer imports the same functions.
+- Indexer output dirs `site/` (committed sample is fine) and `indexer-data/` (price cache, committed).
+- Default RPC for the indexer: `INDEXER_RPC_URL` env (fallback public mainnet); throttle to ≤ 5 req/s.
+- SKR mint: look it up and verify on chain (owner program, decimals) before pinning; record in NOTES.

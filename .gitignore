@@ -45,3 +45,4 @@ android/app/build/
 
 # release signing (secret)
 android/keystore.properties
+.devnet/

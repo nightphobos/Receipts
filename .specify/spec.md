@@ -177,3 +177,24 @@ Purpose: a judge (or anyone without SOL) can see populated screens and play the 
 - Entry: first-run screen offers **Connect wallet** and **Try demo (no wallet)**; Settings has a Demo toggle + Reset demo. Exiting demo returns to live mode untouched.
 - Build flag `EXPO_PUBLIC_DEMO_MODE` (`allowed` default for the hackathon build; `off` compiles the entry points out for the dApp Store build).
 - The indexer and on-chain code never see demo data (it is never sent anywhere).
+
+
+---
+
+# SKR integration v2 (decided 2026-10-07 by the human)
+
+Goal: SKR works inside the mechanics, not only as an asset to call. Still no escrow, no stakes, no funds held by the app.
+
+## 1. SKR balance gate for the leaderboard
+- `SKR_GATE_MIN = 100` SKR (whole tokens; constant in `src/core/tip.ts`, documented). Leaderboard eligibility becomes: N ≥ 10 resolved ≥ 24h calls, ≥ 3 UTC days, **and (Seeker Genesis Token OR SKR balance ≥ SKR_GATE_MIN)**. Both badges show on profiles: "Seeker verified" (Genesis) and "SKR holder" (balance ≥ gate).
+- Balance = sum of the wallet's SKR token accounts (SPL Token, 6 decimals) at check time; the indexer re-checks each run, the app once per hour.
+- Rationale in README: Genesis proves one human per phone; the SKR gate lets non-Seeker Solana users compete by holding the ecosystem token, and both discourage sybil wallets.
+
+## 2. SKR Daily streak
+- `skrDailyStreak(receipts, nowSec)` = consecutive UTC days ending today (or yesterday if today's SKR Daily is still open) on which the wallet sealed its SKR Daily call **and revealed the previous one** (a forfeited SKR Daily breaks the streak; a VOID does not).
+- Leaderboard `skrDaily` rows gain `streak` and `bestStreak`; the SKR DAILY tab gets a toggle "By σ / By streak". Profile shows the flame with the SKR Daily streak separately from the general streak; share result text of an SKR Daily call appends "🔥 SKR Daily streak: N".
+
+## 3. Tips in the leaderboard ("most appreciated")
+- Tip txs become discoverable: `tipInstructions` gains a memo `rcpt:2:t:<recipient>` and the registry tag, so `getSignaturesForAddress(registry)` lists tips too. Indexer/in-app aggregation (`src/core/tips.ts`): per recipient `tipsSkr` (sum, whole SKR), `tippers` (distinct wallets), `tipsCount`; only transfers of the SKR mint, from a signer ≠ recipient, parsed from the tx's `transferChecked`/`transfer` instructions (amount from the parsed instruction, never from the memo).
+- Leaderboard gains `appreciated: { wallet, tipsSkr, tippers }[]` (top 20 by tipsSkr, tie-break tippers) and every row gets `tipsSkr`. RANK tab: third chip "MOST TIPPED". Profile: "Tipped N SKR by M people".
+- Demo mode: the seed includes tips between demo wallets; demo tips append a simulated tx (amount from the pressed button).

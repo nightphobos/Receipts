@@ -237,3 +237,6 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 
 ## HUMAN — phase 8 2026-10-07
 - T051 reveal reminders (local notifications), T052 share card PNG, T053 onboarding, T054 gate. Feature freeze: 2026-10-10 evening.
+
+## HUMAN — SKR integration v2 2026-10-07
+- Phase 9 (T055–T057): SKR balance gate (≥100 SKR or Genesis), SKR Daily streak, tips discoverable via memo `rcpt:2:t:` + registry tag → MOST TIPPED tab. Runs after Phase 8.

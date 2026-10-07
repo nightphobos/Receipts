@@ -144,3 +144,8 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 - Reran `npx tsx scripts/spike-registry.ts`: ed25519 deterministic=true valid=true; airdrop again `429 ... You've either reached your airdrop limit today or the airdrop faucet has run dry` (key `5wY8Dy…` balance 0).
 - Simulation fallback again `err=null` (payer `AVm1ww…`, memo + System transfer 0 lamports both `success`). No code changes.
 - Next (attempt 3): rerun once; if still 429, mark `[!]` (needs human: fund `5wY8DyzUmAVc9Hkv2uhqZuPvQWmeBd3w2Q4gsaAifFBa` via faucet.solana.com captcha) and adopt "plain 0-lamport transfer" for T035.
+
+## T030 — attempt 3 2026-10-07 — BLOCKED [!]
+- Reran `npx tsx scripts/spike-registry.ts`: ed25519 deterministic=true valid=true; airdrop still `429 ... You've either reached your airdrop limit today or the airdrop faucet has run dry`. Simulation of [memo `rcpt:2:test`, 0-lamport transfer → REGISTRY] again `err=null`, both programs `success`.
+- Blocked: needs human to fund devnet key `5wY8DyzUmAVc9Hkv2uhqZuPvQWmeBd3w2Q4gsaAifFBa` via faucet.solana.com (captcha), then rerun the script to confirm real send + `getSignaturesForAddress(REGISTRY)` listing.
+- Chosen approach (from simulation evidence): plain 0-lamport System transfer to REGISTRY, no rent funding. T035 should use it.

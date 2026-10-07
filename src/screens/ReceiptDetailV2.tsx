@@ -1,10 +1,12 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { demoShareText, isDemoSignature } from "../core/demoData";
 import { useDemo } from "../demo/store";
 import { appNowSec } from "../demo/store";
 import { Linking, RefreshControl, ScrollView, Share, StyleSheet, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
+import * as Sharing from "expo-sharing";
+import { captureRef } from "react-native-view-shot";
 import * as Haptics from "expo-haptics";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -12,6 +14,7 @@ import { describeCallV2, formatCountdown, formatUsd, solscanTxUrl } from "../cor
 import { SOURCE_LABEL, isDemo } from "../core/price";
 import { REVEAL_GRACE_SEC, statusOfV2, type ReceiptV2, type StatusV2 } from "../core/score";
 import { resultShareText, sealedShareText } from "../core/share";
+import { SHARE_CARD_HEIGHT, SHARE_CARD_WIDTH, shareCardModel } from "../core/shareCard";
 import { canRevealV2, findSecretV2, revealReceiptV2 } from "../chain/reveal";
 import { cancelRevealReminders } from "../notifications/reminders";
 import { isUserRejection } from "../chain/seal";
@@ -21,6 +24,7 @@ import { useNowSec } from "../hooks/useNow";
 import { usePriceSource } from "../hooks/usePriceSource";
 import { DemoBadge } from "../components/receipt/demo-badge";
 import { RevealCeremony } from "../components/receipt/reveal-ceremony";
+import { ShareCard } from "../components/receipt/share-card";
 import { useCluster } from "../components/cluster/cluster-data-access";
 import { useAuthorization } from "../utils/useAuthorization";
 import { useMobileWallet } from "../utils/useMobileWallet";
@@ -134,7 +138,26 @@ export function ReceiptDetailV2({
       ? sealedShareText(receipt, cluster)
       : resultShareText(receipt, all, now, cluster, { demo });
   const shareOut = demoMode && share ? demoShareText(share) : share;
-  const onShare = () => Share.share({ message: shareOut ?? "" }).catch(() => undefined);
+  const card = share ? shareCardModel(receipt, all, now, { demo: demo || demoMode }) : null;
+  const cardRef = useRef<View>(null);
+  const [sharing, setSharing] = useState(false);
+  const shareTextOnly = () => Share.share({ message: shareOut ?? "" }).catch(() => undefined);
+  // PNG card via the system sheet. Android's sheet takes no message with a file, so the text goes
+  // to the clipboard first (paste it as the caption); any capture/sharing failure falls back to text.
+  const onShare = async () => {
+    if (!card || !cardRef.current || !(await Sharing.isAvailableAsync().catch(() => false))) return shareTextOnly();
+    setSharing(true);
+    try {
+      const uri = await captureRef(cardRef, { format: "png", width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT, result: "tmpfile" });
+      await Clipboard.setStringAsync(shareOut ?? "");
+      showToast("Card ready · share text copied, paste it as the caption");
+      await Sharing.shareAsync(uri, { mimeType: "image/png", dialogTitle: shareOut?.split("\n")[0] });
+    } catch {
+      await shareTextOnly();
+    } finally {
+      setSharing(false);
+    }
+  };
   const onCopy = async () => {
     await Clipboard.setStringAsync(shareOut ?? "");
     showToast("Share text copied");
@@ -222,11 +245,17 @@ export function ReceiptDetailV2({
         <View style={styles.shareRow}>
           <PixelButton
             style={styles.flex}
-            label={status === "sealed" ? "SHARE SEALED CALL" : "SHARE RESULT"}
+            label={sharing ? "PRINTING CARD…" : status === "sealed" ? "SHARE SEALED CALL" : "SHARE RESULT"}
             icon="share"
+            disabled={sharing}
             onPress={onShare}
           />
-          <PixelButton label="COPY" variant="ghost" onPress={onCopy} />
+          <PixelButton label="COPY TEXT" variant="ghost" onPress={onCopy} />
+        </View>
+      )}
+      {card && (
+        <View style={styles.offscreen} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <ShareCard ref={cardRef} model={card} />
         </View>
       )}
 
@@ -285,4 +314,6 @@ const styles = StyleSheet.create({
   shareRow: { flexDirection: "row", gap: space.sm },
   flex: { flex: 1 },
   fact: { gap: 2 },
+  // Rendered but outside the screen: view-shot needs a laid-out native view to capture.
+  offscreen: { position: "absolute", left: -10000, top: 0 },
 });

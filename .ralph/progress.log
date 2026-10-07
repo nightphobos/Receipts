@@ -61,3 +61,4 @@ open:    0
 dist/receipts-20261007-1033.apk
 dist/receipts-20261007-1038.apk
 [2026-10-07 13:01:53] iter 1/60 · open: 7 · next: T051 Local reveal reminders, no server: `npx expo install expo-notificatio
+[2026-10-07 13:06:41] iter 2/60 · open: 6 · next: T052 Receipt share card image: `npx expo install react-native-view-shot ex

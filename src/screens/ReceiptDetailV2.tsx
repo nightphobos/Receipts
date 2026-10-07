@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Linking, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { Button, Card, Divider, Text } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -16,6 +16,7 @@ import { useNowSec } from "../hooks/useNow";
 import { usePriceSource } from "../hooks/usePriceSource";
 import { DemoBadge } from "../components/receipt/demo-badge";
 import { StatusChip } from "../components/receipt/status-chip";
+import { RevealCeremony } from "../components/receipt/reveal-ceremony";
 import { useCluster } from "../components/cluster/cluster-data-access";
 import { useAuthorization } from "../utils/useAuthorization";
 import { useMobileWallet } from "../utils/useMobileWallet";
@@ -44,11 +45,12 @@ function TxLink({ label, signature, cluster }: { label: string; signature: strin
 function resolutionText(row: ReceiptRowV2, status: StatusV2, now: number, priceName: string): string {
   const { receipt } = row;
   const left = (t: number) => formatCountdown(t - now);
+  const p0 = receipt.p0 != null ? `${priceName} at seal (P0): $${formatUsd(receipt.p0)}\n` : "";
   switch (status) {
     case "sealed":
-      return `Reveal opens in ${left(receipt.deadline)}`;
+      return `${p0}Reveal opens in ${left(receipt.deadline)}`;
     case "awaiting_reveal":
-      return `Reveal within ${left(receipt.deadline + REVEAL_GRACE_SEC)} or it counts as a miss.`;
+      return `${p0}Reveal within ${left(receipt.deadline + REVEAL_GRACE_SEC)} or it counts as a miss.`;
     case "forfeited":
       return "Not revealed within 24 h of the deadline — counts as a miss.";
     case "overlap":
@@ -97,6 +99,12 @@ export function ReceiptDetailV2({
   const { name: priceName } = SOURCE_LABEL[priceSource.kindOf(receipt.asset)];
   const needsRecovery = !row.hasSecret && !masterKey.master;
   const pose = poseForStatus(status, { printing: revealing || pendingReveal });
+  const resolved = status === "hit" || status === "miss" || status === "void";
+  // null = show the printed receipt; a number = play the ceremony (bumped by Replay to remount).
+  const [ceremonyKey, setCeremonyKey] = useState<number | null>(null);
+  useEffect(() => {
+    if (sentReveal && resolved) setCeremonyKey((k) => k ?? 1);
+  }, [sentReveal, resolved]);
 
   const onReveal = useCallback(async () => {
     if (!selectedAccount) return;
@@ -161,6 +169,29 @@ export function ReceiptDetailV2({
         <View style={styles.gapSmall}>
           <DemoBadge />
         </View>
+      )}
+
+      {resolved && (
+        <>
+          <RevealCeremony
+            key={ceremonyKey ?? 0}
+            style={styles.gap}
+            play={ceremonyKey !== null}
+            outcome={status}
+            p0={receipt.p0 as number}
+            pt={receipt.pt as number}
+            commitSignature={receipt.commit.signature}
+            sealedAt={receipt.commit.blockTime}
+          />
+          <Button
+            style={styles.link}
+            mode="text"
+            icon="replay"
+            onPress={() => setCeremonyKey((k) => (k ?? 0) + 1)}
+          >
+            Replay reveal
+          </Button>
+        </>
       )}
 
       <Card style={styles.gap}>

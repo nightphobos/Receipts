@@ -53,7 +53,7 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 - [x] T044 Theme foundation per spec "Visual style: Night Register": `src/theme/tokens.ts`, fonts via `npx expo install expo-font @expo-google-fonts/pixelify-sans @expo-google-fonts/dotgothic16 @expo-google-fonts/vt323` (+ `react-native-svg`, `react-native-reanimated` if missing, configured per Expo docs), Paper theme mapped to tokens, PixelButton, PixelPanel, Chip, StatusStamp, ReceiptPaper, pixel icon set, 3-tab bar. `yarn typecheck` green, bundle exports.
 - [x] T045 Parallax background per spec: `src/core/parallax.ts` (pure, test-first), `ParallaxBackground` with drift + DeviceMotion tilt (`expo-sensors`) + scroll offset, pixel snapping, reduce-motion off switch, paused in background. Mount it behind all screens.
 - [x] T046 Mascot Chekko (5 poses as pixel rect data) + dialog panel; idle on New, eat on Seal, print → cheer/cry on reveal.
-- [ ] T037 App: reveal ceremony animation + haptic; Profile v2 (zσ, N, hit-rate, hidden & forfeited, streak, legacy section); list/detail show P0/PT and VOID.
+- [x] T037 App: reveal ceremony animation + haptic; Profile v2 (zσ, N, hit-rate, hidden & forfeited, streak, legacy section); list/detail show P0/PT and VOID.
 - [ ] T038 Share texts (sealed + result) via RN `Share` + copy, exactly per spec; unit-test the text builders in core.
 - [ ] T039 `scripts/indexer.ts` + `.github/workflows/indexer.yml` per spec; run once against mainnet locally, commit `site/` sample and `indexer-data/`. Unit-test the aggregation in core.
 - [ ] T040 App Leaderboard tab: overall (≥24h, eligible only) and SKR Daily tabs; from `EXPO_PUBLIC_LEADERBOARD_URL` or computed in-app from the registry if unset; tap → read-only profile of that wallet.

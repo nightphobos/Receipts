@@ -6,6 +6,7 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { describeCall, describeCallV2, formatCountdown, formatUsd } from "../core/format";
+import { formatChangePct } from "../core/ceremony";
 import { SOURCE_LABEL, isDemo, type PriceSourceKind } from "../core/price";
 import { REVEAL_GRACE_SEC, statusOf, statusOfV2, type Status, type StatusV2 } from "../core/score";
 import { useReceipts, useReceiptsV2, type ReceiptRow, type ReceiptRowV2 } from "../hooks/useReceipts";
@@ -76,11 +77,12 @@ function ReceiptItem({ row, now, onPress }: { row: ReceiptRow; now: number; onPr
 
 function statusLineV2(row: ReceiptRowV2, status: StatusV2, now: number): string {
   const { receipt } = row;
+  const p0 = receipt.p0 != null ? `P0 $${formatUsd(receipt.p0)} · ` : "";
   switch (status) {
     case "sealed":
-      return `Reveal opens in ${formatCountdown(receipt.deadline - now)}`;
+      return `${p0}reveal opens in ${formatCountdown(receipt.deadline - now)}`;
     case "awaiting_reveal":
-      return `Reveal within ${formatCountdown(receipt.deadline + REVEAL_GRACE_SEC - now)}`;
+      return `${p0}reveal within ${formatCountdown(receipt.deadline + REVEAL_GRACE_SEC - now)}`;
     case "forfeited":
       return "Not revealed in time — counts as a miss";
     case "overlap":
@@ -91,8 +93,12 @@ function statusLineV2(row: ReceiptRowV2, status: StatusV2, now: number): string 
       return "Legacy receipt";
     case "hit":
     case "miss":
-    case "void":
-      return `$${formatUsd(receipt.p0 as number)} → $${formatUsd(receipt.pt as number)}`;
+    case "void": {
+      const p0v = receipt.p0 as number;
+      const ptv = receipt.pt as number;
+      const line = `P0 $${formatUsd(p0v)} → PT $${formatUsd(ptv)} (${formatChangePct(p0v, ptv)})`;
+      return status === "void" ? `${line} · VOID, not counted` : line;
+    }
   }
 }
 

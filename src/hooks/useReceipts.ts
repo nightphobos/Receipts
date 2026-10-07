@@ -97,15 +97,16 @@ async function safePriceAt(source: PriceSource, asset: ReceiptV2["asset"], ts: n
 async function loadRowV2(source: PriceSource, receipt: ReceiptV2, nowSec: number): Promise<ReceiptRowV2> {
   const secret = await loadSecret(AsyncStorage, receipt.hash);
   const local = secret ? callV2FromJson(secret.json) : null;
-  if (!receipt.reveal) return { receipt, call: local, hasSecret: local !== null };
+  // P0 for every receipt (shown while sealed too); PT only matters once revealed.
   const [p0, pt] = await Promise.all([
     safePriceAt(source, receipt.asset, refTimeForCommit(receipt.commit.blockTime), nowSec),
-    safePriceAt(source, receipt.asset, receipt.deadline, nowSec),
+    receipt.reveal ? safePriceAt(source, receipt.asset, receipt.deadline, nowSec) : null,
   ]);
+  if (!receipt.reveal) return { receipt: { ...receipt, p0 }, call: local, hasSecret: local !== null };
   return { receipt: { ...receipt, p0, pt }, call: receipt.reveal.call, hasSecret: local !== null };
 }
 
-/** The wallet's v2 receipts (tagged, newest first) with local calls and P0/PT for revealed ones. */
+/** The wallet's v2 receipts (tagged, newest first) with local calls, P0 and (revealed only) PT. */
 export function useReceiptsV2(wallet: PublicKey | undefined) {
   const { connection } = useConnection();
   const queryClient = useQueryClient();

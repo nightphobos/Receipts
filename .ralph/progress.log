@@ -45,3 +45,4 @@ dist/receipts-20261007-0004.apk
 [2026-10-07 09:58:04] iter 10/60 · open: 11 · next: T044 Theme foundation per spec "Visual style: Night Register": `src/theme/
 [2026-10-07 10:01:59] iter 11/60 · open: 10 · next: T045 Parallax background per spec: `src/core/parallax.ts` (pure, test-firs
 [2026-10-07 10:05:25] iter 12/60 · open: 9 · next: T046 Mascot Chekko (5 poses as pixel rect data) + dialog panel; idle on Ne
+[2026-10-07 10:07:53] iter 13/60 · open: 8 · next: T037 App: reveal ceremony animation + haptic; Profile v2 (zσ, N, hit-rate,

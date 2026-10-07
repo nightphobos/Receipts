@@ -155,7 +155,7 @@ export function WalletProfileScreen({ route }: Props) {
             {`All calls incl. 1h practice: N ${p.stats.n} · ${formatSigma(p.stats.z)} · void ${p.stats.voids} · pending ${p.stats.pending}`}
           </Text>
           <Text style={styles.muted}>
-            {`${p.eligibility.eligible ? "Eligible" : "Not eligible yet"} · ${p.eligibility.n}/${LEADERBOARD_MIN_N} calls · ${p.eligibility.days}/${LEADERBOARD_MIN_DAYS} days · Genesis ${p.hasGenesis ? "✓" : "✕"} or SKR ≥ ${SKR_GATE_MIN} ${p.skrHolder ? "✓" : "✕"}`}
+            {`${p.eligibility.eligible ? "Eligible" : "Not eligible yet"} · ${p.eligibility.n} calls (need ${LEADERBOARD_MIN_N}) · ${p.eligibility.days} days (need ${LEADERBOARD_MIN_DAYS}) · Genesis ${p.hasGenesis ? "✓" : "✕"} or SKR ≥ ${SKR_GATE_MIN} ${p.skrHolder ? "✓" : "✕"}`}
           </Text>
         </PixelPanel>
       )}

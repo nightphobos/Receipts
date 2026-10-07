@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { appNowSec } from "../demo/store";
+import { appNowSec, useDemo } from "../demo/store";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getRandomBytes } from "expo-crypto";
@@ -105,6 +105,7 @@ export function NewReceiptScreen() {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const masterKey = useMasterKey(selectedAccount?.publicKey);
+  const demoMode = useDemo().active;
   const receipts = useReceiptsV2(selectedAccount?.publicKey);
   const nowSec = useNowSec();
 
@@ -213,7 +214,7 @@ export function NewReceiptScreen() {
         pose={sealing ? "eat" : "idle"}
         text={mascotLine(sealing ? "eat" : "idle", { asset, horizon })}
       />
-      {!masterKey.isLoading && (
+      {!masterKey.isLoading && !demoMode && (
         <MasterKeyCard state={masterKey.state} onSetup={setupMaster} busy={settingUp} />
       )}
 

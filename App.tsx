@@ -44,10 +44,13 @@ export default function App() {
               <DemoSync />
               <ReminderSync />
               <DemoBanner />
-              <ParallaxBackground>
-                <AppNavigator />
-              </ParallaxBackground>
-              <DemoRibbon />
+              <View style={styles.content}>
+                <ParallaxBackground>
+                  <AppNavigator />
+                </ParallaxBackground>
+                {/* Inside the content area so the ribbon sits under the banner, not over its EXIT button. */}
+                <DemoRibbon />
+              </View>
               <Onboarding />
               <ToastHost />
             </PaperProvider>
@@ -59,6 +62,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  content: { flex: 1 },
   shell: {
     flex: 1,
     backgroundColor: colors.bg,

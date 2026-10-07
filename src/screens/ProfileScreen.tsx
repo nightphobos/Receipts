@@ -187,7 +187,7 @@ export function ProfileScreen() {
                 </View>
               )}
               <Muted>
-                {`Leaderboard: ${elig.eligible ? "eligible" : "not yet"} · ${elig.n}/${LEADERBOARD_MIN_N} scored ≥24h calls · ${elig.days}/${LEADERBOARD_MIN_DAYS} days · Genesis ${elig.hasGenesis ? "✓" : "✕"} or SKR ≥ ${SKR_GATE_MIN} ${holder ? "✓" : "✕"}`}
+                {`Leaderboard: ${elig.eligible ? "eligible" : "not yet"} · ${elig.n} scored ≥24h calls (need ${LEADERBOARD_MIN_N}) · ${elig.days} days (need ${LEADERBOARD_MIN_DAYS}) · Genesis ${elig.hasGenesis ? "✓" : "✕"} or SKR ≥ ${SKR_GATE_MIN} ${holder ? "✓" : "✕"}`}
               </Muted>
               <Muted>
                 Misses include forfeited and overlapping calls. VOID (price unchanged) is not counted. 1h practice

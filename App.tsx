@@ -10,7 +10,7 @@ import { PaperProvider } from "react-native-paper";
 import { AppNavigator } from "./src/navigators/AppNavigator";
 import { ClusterProvider } from "./src/components/cluster/cluster-data-access";
 import { ToastHost, showErrorToast } from "./src/components/ui/toast";
-import { colors, nightTheme, useThemeFonts } from "./src/theme";
+import { ParallaxBackground, colors, nightTheme, useThemeFonts } from "./src/theme";
 
 // Queries opt into an error toast with `meta: { errorToast: "<prefix>" }`.
 const queryClient = new QueryClient({
@@ -31,7 +31,9 @@ export default function App() {
         <ConnectionProvider config={{ commitment: "confirmed" }}>
           <SafeAreaView style={styles.shell}>
             <PaperProvider theme={nightTheme}>
-              <AppNavigator />
+              <ParallaxBackground>
+                <AppNavigator />
+              </ParallaxBackground>
               <ToastHost />
             </PaperProvider>
           </SafeAreaView>

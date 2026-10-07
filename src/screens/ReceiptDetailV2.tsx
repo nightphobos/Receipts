@@ -22,6 +22,7 @@ import { useMobileWallet } from "../utils/useMobileWallet";
 import { useConnection } from "../utils/ConnectionProvider";
 import { alertAndLog } from "../utils/alertAndLog";
 import { showToast } from "../components/ui/toast";
+import { useParallaxScroll } from "../theme";
 
 const fmtTime = (sec: number) => new Date(sec * 1000).toLocaleString();
 
@@ -75,6 +76,7 @@ export function ReceiptDetailV2({
   refetch: () => void;
   isRefetching: boolean;
 }) {
+  const parallaxScroll = useParallaxScroll();
   const { selectedAccount } = useAuthorization();
   const { connection } = useConnection();
   const { selectedCluster } = useCluster();
@@ -137,6 +139,7 @@ export function ReceiptDetailV2({
 
   return (
     <ScrollView
+      {...parallaxScroll}
       contentContainerStyle={styles.screenContainer}
       refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
     >

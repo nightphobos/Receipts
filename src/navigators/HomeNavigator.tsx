@@ -22,6 +22,7 @@ export function HomeNavigator() {
   return (
     <Tab.Navigator
       tabBar={(props) => <PixelTabBar {...props} />}
+      sceneContainerStyle={{ backgroundColor: "transparent" }}
       screenOptions={{
         header: () => <TopBar />,
       }}

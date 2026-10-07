@@ -43,3 +43,4 @@ dist/receipts-20261007-0004.apk
 [2026-10-07 09:48:58] iter 8/60 · open: 9 · next: T035 `src/chain`: memo tx builder adds the registry tag (per T030 outcome)
 [2026-10-07 09:51:10] iter 9/60 · open: 8 · next: T036 App seal/reveal v2: master-key setup via MWA `signMessage` (+ determi
 [2026-10-07 09:58:04] iter 10/60 · open: 11 · next: T044 Theme foundation per spec "Visual style: Night Register": `src/theme/
+[2026-10-07 10:01:59] iter 11/60 · open: 10 · next: T045 Parallax background per spec: `src/core/parallax.ts` (pure, test-firs

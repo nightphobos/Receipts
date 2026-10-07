@@ -25,6 +25,7 @@ import { useConnection } from "../utils/ConnectionProvider";
 import { ConnectButton } from "../components/sign-in/sign-in-ui";
 import { alertAndLog } from "../utils/alertAndLog";
 import { showToast } from "../components/ui/toast";
+import { useParallaxScroll } from "../theme";
 
 const WARNED_KEY = "rcpt:warned-local-secrets";
 
@@ -92,6 +93,7 @@ function MasterKeyCard({ state, onSetup, busy }: { state: MasterState | null; on
 }
 
 export function NewReceiptScreen() {
+  const parallaxScroll = useParallaxScroll();
   const { selectedAccount } = useAuthorization();
   const { connection } = useConnection();
   const wallet = useMobileWallet();
@@ -189,7 +191,7 @@ export function NewReceiptScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.screenContainer}>
+    <ScrollView {...parallaxScroll} contentContainerStyle={styles.screenContainer}>
       <Text variant="titleLarge">Seal a call</Text>
       {!masterKey.isLoading && (
         <MasterKeyCard state={masterKey.state} onSetup={setupMaster} busy={settingUp} />

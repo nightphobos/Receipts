@@ -47,7 +47,7 @@ const AppStack = () => {
         headerStyle: { backgroundColor: colors.bgDeep },
         headerTintColor: colors.text,
         headerTitleStyle: { fontFamily: fonts.heading },
-        contentStyle: { backgroundColor: colors.bg },
+        contentStyle: { backgroundColor: "transparent" },
       }}
     >
       <Stack.Screen
@@ -66,12 +66,15 @@ const AppStack = () => {
   );
 };
 
+/** Screens are transparent so the parallax background shows through. */
+const navTheme = { ...nightTheme, colors: { ...nightTheme.colors, background: "transparent" } };
+
 export interface NavigationProps
   extends Partial<React.ComponentProps<typeof NavigationContainer>> {}
 
 export const AppNavigator = (props: NavigationProps) => {
   return (
-    <NavigationContainer theme={nightTheme} {...props}>
+    <NavigationContainer theme={navTheme} {...props}>
       <StatusBar style="light" />
       <AppStack />
     </NavigationContainer>

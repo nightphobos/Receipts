@@ -18,6 +18,7 @@ import { ConnectButton } from "../components/sign-in/sign-in-ui";
 import { useAuthorization } from "../utils/useAuthorization";
 import { alertAndLog } from "../utils/alertAndLog";
 import { ellipsify } from "../utils/ellipsify";
+import { useParallaxScroll } from "../theme";
 
 function StatBox({ label, value }: { label: string; value: number | string }) {
   return (
@@ -29,6 +30,7 @@ function StatBox({ label, value }: { label: string; value: number | string }) {
 }
 
 export function ProfileScreen() {
+  const parallaxScroll = useParallaxScroll();
   const { selectedAccount } = useAuthorization();
   const { selectedCluster } = useCluster();
   const demo = usePriceSource().kind === "mock";
@@ -62,6 +64,7 @@ export function ProfileScreen() {
   return (
     <View style={styles.flex}>
       <ScrollView
+        {...parallaxScroll}
         contentContainerStyle={styles.screenContainer}
         refreshControl={
           <RefreshControl

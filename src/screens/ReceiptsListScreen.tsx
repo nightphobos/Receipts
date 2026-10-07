@@ -17,6 +17,7 @@ import { ConnectButton } from "../components/sign-in/sign-in-ui";
 import { useAuthorization } from "../utils/useAuthorization";
 import type { RootStackParamList } from "../navigators/AppNavigator";
 import type { HomeTabParamList } from "../navigators/HomeNavigator";
+import { useParallaxScroll } from "../theme";
 
 type Nav = CompositeNavigationProp<
   BottomTabNavigationProp<HomeTabParamList, "Home">,
@@ -128,6 +129,7 @@ type ListRow = { v: 1; row: ReceiptRow } | { v: 2; row: ReceiptRowV2 };
 export function ReceiptsListScreen() {
   const { selectedAccount } = useAuthorization();
   const navigation = useNavigation<Nav>();
+  const parallaxScroll = useParallaxScroll();
   const legacy = useReceipts(selectedAccount?.publicKey);
   const receiptsV2 = useReceiptsV2(selectedAccount?.publicKey);
   const now = useNowSec();
@@ -172,6 +174,7 @@ export function ReceiptsListScreen() {
 
   return (
     <FlatList
+      {...parallaxScroll}
       contentContainerStyle={styles.list}
       data={rows}
       keyExtractor={(r) => r.row.receipt.hash}

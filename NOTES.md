@@ -139,3 +139,8 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 - Airdrop blocked: `429 ... You've either reached your airdrop limit today or the airdrop faucet has run dry` (public devnet faucet, also via curl with 0.1/0.5 SOL). No local validator installed (and installing outside repo is forbidden).
 - Fallback evidence: script simulates [memo `rcpt:2:test`, 0-lamport transfer payer→REGISTRY] on devnet with a funded payer (sigVerify off, nothing sent) → `err=null`, memo + System program both `success`, REGISTRY unfunded. So the plain 0-lamport tag works; no rent funding needed.
 - Next: rerun the script when the faucet allows (or fund the key from faucet.solana.com) to confirm the real send and `getSignaturesForAddress(REGISTRY)` listing; if still 429 after attempt 3, mark `[!]` (needs human faucet/captcha) and proceed with "plain 0-lamport transfer" as the chosen approach.
+
+## T030 — attempt 2 2026-10-07
+- Reran `npx tsx scripts/spike-registry.ts`: ed25519 deterministic=true valid=true; airdrop again `429 ... You've either reached your airdrop limit today or the airdrop faucet has run dry` (key `5wY8Dy…` balance 0).
+- Simulation fallback again `err=null` (payer `AVm1ww…`, memo + System transfer 0 lamports both `success`). No code changes.
+- Next (attempt 3): rerun once; if still 429, mark `[!]` (needs human: fund `5wY8DyzUmAVc9Hkv2uhqZuPvQWmeBd3w2Q4gsaAifFBa` via faucet.solana.com captcha) and adopt "plain 0-lamport transfer" for T035.

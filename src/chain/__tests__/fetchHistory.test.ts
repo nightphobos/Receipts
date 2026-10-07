@@ -1,13 +1,21 @@
 import { PublicKey, type ConfirmedSignatureInfo, type ParsedTransactionWithMeta } from "@solana/web3.js";
-import { canonicalJson, type Call } from "../../core/call";
+import { canonicalJson, canonicalJsonV2, type Call, type CallV2 } from "../../core/call";
 import { commitHash } from "../../core/commit";
-import { buildReceipts } from "../../core/history";
-import { encodeCommitMemo, encodeRevealMemo } from "../../core/memo";
+import { buildReceipts, buildReceiptsV2 } from "../../core/history";
+import {
+  REGISTRY,
+  encodeCommitMemo,
+  encodeCommitMemoV2,
+  encodeRevealMemo,
+  encodeRevealMemoV2,
+} from "../../core/memo";
 import {
   PARSED_TX_BATCH,
   SIGNATURE_PAGE,
   extractMemos,
   fetchMemoHistory,
+  fetchRegistry,
+  registryTagSources,
   toMemoTxs,
   type HistoryConnection,
 } from "../fetchHistory";
@@ -27,6 +35,11 @@ const SALT = "000102030405060708090a0b0c0d0e0f";
 const COMMIT = encodeCommitMemo(commitHash(JSON_A, SALT), DEADLINE);
 const REVEAL = encodeRevealMemo(JSON_A, SALT);
 
+const CALL_V2: CallV2 = { v: 2, asset: "SOL", dir: "up", deadline: DEADLINE, created: 1800000000 };
+const JSON_V2 = canonicalJsonV2(CALL_V2);
+const COMMIT_V2 = encodeCommitMemoV2(commitHash(JSON_V2, SALT), DEADLINE, "SOL");
+const REVEAL_V2 = encodeRevealMemoV2(JSON_V2, SALT);
+
 type Raw = typeof recorded;
 const clone = (): Raw => JSON.parse(JSON.stringify(recorded));
 const asParsed = (raw: unknown) => raw as ParsedTransactionWithMeta;
@@ -40,6 +53,21 @@ function withMemo(memo: string, over: { blockTime?: number | null; err?: unknown
   );
   if ("blockTime" in over) raw.blockTime = over.blockTime;
   if ("err" in over) raw.meta.err = over.err;
+  return asParsed(raw);
+}
+
+/** Add the registry tag: REGISTRY account key + parsed 0-lamport System transfer `source` → REGISTRY. */
+function withTag(tx: ParsedTransactionWithMeta, source = MEMO_SIGNER, opts: { lamports?: number; inner?: boolean } = {}) {
+  const raw = JSON.parse(JSON.stringify(tx));
+  raw.transaction.message.accountKeys.push({ pubkey: REGISTRY, signer: false, source: "transaction", writable: true });
+  const ix = {
+    parsed: { info: { destination: REGISTRY, lamports: opts.lamports ?? 0, source }, type: "transfer" },
+    program: "system",
+    programId: "11111111111111111111111111111111",
+    stackHeight: opts.inner ? 2 : 1,
+  };
+  if (opts.inner) raw.meta.innerInstructions.push({ index: 0, instructions: [ix] });
+  else raw.transaction.message.instructions.push(ix);
   return asParsed(raw);
 }
 
@@ -101,7 +129,7 @@ describe("toMemoTxs", () => {
   it("maps a rcpt memo to the buildReceipts input shape", () => {
     const tx = withMemo(COMMIT);
     expect(toMemoTxs(RECORDED_SIG, tx, MEMO_SIGNER)).toEqual([
-      { signature: RECORDED_SIG, blockTime: recorded.blockTime, signer: MEMO_SIGNER, memo: COMMIT, failed: false },
+      { signature: RECORDED_SIG, blockTime: recorded.blockTime, signer: MEMO_SIGNER, memo: COMMIT, failed: false, tagged: false },
     ]);
     // the fee payer is a signer too
     expect(toMemoTxs(RECORDED_SIG, tx, FEE_PAYER)[0].signer).toBe(FEE_PAYER);
@@ -128,16 +156,48 @@ describe("toMemoTxs", () => {
   });
 });
 
+describe("registryTagSources", () => {
+  it("is empty for an untagged tx", () => {
+    expect(registryTagSources(withMemo(COMMIT_V2))).toEqual([]);
+  });
+
+  it("lists sources of System transfers to REGISTRY (top-level and inner)", () => {
+    expect(registryTagSources(withTag(withMemo(COMMIT_V2)))).toEqual([MEMO_SIGNER]);
+    expect(registryTagSources(withTag(withMemo(COMMIT_V2), FEE_PAYER, { inner: true }))).toEqual([FEE_PAYER]);
+  });
+
+  it("ignores System transfers to other accounts (the recorded createAccount too)", () => {
+    const raw = withTag(withMemo(COMMIT_V2)) as any;
+    raw.transaction.message.instructions.at(-1).parsed.info.destination = FEE_PAYER;
+    expect(registryTagSources(raw)).toEqual([]);
+  });
+});
+
+describe("toMemoTxs v2", () => {
+  it("keeps rcpt:2: memos and marks them tagged when the wallet tagged the tx", () => {
+    expect(toMemoTxs("s", withTag(withMemo(COMMIT_V2)), MEMO_SIGNER)).toEqual([
+      { signature: "s", blockTime: recorded.blockTime, signer: MEMO_SIGNER, memo: COMMIT_V2, failed: false, tagged: true },
+    ]);
+  });
+
+  it("is untagged without the tag, or when another signer paid the tag", () => {
+    expect(toMemoTxs("s", withMemo(COMMIT_V2), MEMO_SIGNER)[0].tagged).toBe(false);
+    expect(toMemoTxs("s", withTag(withMemo(COMMIT_V2), FEE_PAYER), MEMO_SIGNER)[0].tagged).toBe(false);
+    expect(toMemoTxs("s", withTag(withMemo(COMMIT_V2), FEE_PAYER), FEE_PAYER)[0].tagged).toBe(true);
+  });
+});
+
 /** In-memory Connection: `txs` keyed by signature, newest first. */
 function mockConnection(entries: { sig: string; tx: ParsedTransactionWithMeta | null; memo?: string | null; err?: unknown }[]) {
-  const sigCalls: { address: string; before?: string; limit?: number }[] = [];
+  const sigCalls: { address: string; before?: string; until?: string; limit?: number }[] = [];
   const txCalls: string[][] = [];
   const conn: HistoryConnection = {
     async getSignaturesForAddress(address, options) {
-      sigCalls.push({ address: address.toBase58(), before: options?.before, limit: options?.limit });
+      sigCalls.push({ address: address.toBase58(), before: options?.before, until: options?.until, limit: options?.limit });
       const limit = options?.limit ?? 1000;
       const start = options?.before ? entries.findIndex((e) => e.sig === options.before) + 1 : 0;
-      return entries.slice(start, start + limit).map(
+      const stop = options?.until ? entries.findIndex((e) => e.sig === options.until) : entries.length;
+      return entries.slice(start, Math.min(start + limit, stop)).map(
         (e) =>
           ({
             signature: e.sig,
@@ -169,7 +229,7 @@ describe("fetchMemoHistory", () => {
       { sig: "commit", tx: commitTx },
     ]);
     const txs = await fetchMemoHistory(conn, wallet);
-    expect(sigCalls).toEqual([{ address: MEMO_SIGNER, before: undefined, limit: SIGNATURE_PAGE }]);
+    expect(sigCalls).toEqual([{ address: MEMO_SIGNER, before: undefined, until: undefined, limit: SIGNATURE_PAGE }]);
     expect(txs.map((t) => [t.signature, t.memo])).toEqual([
       ["reveal", REVEAL],
       ["commit", COMMIT],
@@ -221,5 +281,83 @@ describe("fetchMemoHistory", () => {
       { sig: "mine", tx: withMemo(COMMIT) },
     ]);
     expect((await fetchMemoHistory(conn, wallet)).map((t) => t.signature)).toEqual(["mine"]);
+  });
+});
+
+describe("fetchMemoHistory v2", () => {
+  it("keeps rcpt:2: txs through the prefilter and sets tagged", async () => {
+    const { conn } = mockConnection([
+      { sig: "v2", tx: withTag(withMemo(COMMIT_V2)), memo: `[${COMMIT_V2.length}] ${COMMIT_V2}` },
+      { sig: "v1", tx: withMemo(COMMIT) },
+    ]);
+    const txs = await fetchMemoHistory(conn, new PublicKey(MEMO_SIGNER));
+    expect(txs.map((t) => [t.signature, t.tagged])).toEqual([
+      ["v2", true],
+      ["v1", false],
+    ]);
+  });
+});
+
+describe("fetchRegistry", () => {
+  const v2memo = (m: string) => `[${m.length}] ${m}`;
+
+  it("lists REGISTRY signatures and attributes memos to the tag payer, for every wallet", async () => {
+    const commitTx = withTag(withMemo(COMMIT_V2, { blockTime: CALL_V2.created + 10 }));
+    const revealTx = withTag(withMemo(REVEAL_V2, { blockTime: DEADLINE + 60 }));
+    const otherWallet = withTag(withMemo(COMMIT_V2, { blockTime: CALL_V2.created + 20 }), FEE_PAYER);
+    const { conn, sigCalls } = mockConnection([
+      { sig: "reveal", tx: revealTx, memo: v2memo(REVEAL_V2) },
+      { sig: "other", tx: otherWallet, memo: v2memo(COMMIT_V2) },
+      { sig: "commit", tx: commitTx, memo: v2memo(COMMIT_V2) },
+    ]);
+    const txs = await fetchRegistry(conn);
+    expect(sigCalls).toEqual([{ address: REGISTRY, before: undefined, until: undefined, limit: SIGNATURE_PAGE }]);
+    expect(txs.map((t) => [t.signature, t.signer, t.tagged])).toEqual([
+      ["reveal", MEMO_SIGNER, true],
+      ["other", FEE_PAYER, true],
+      ["commit", MEMO_SIGNER, true],
+    ]);
+    const [mine] = buildReceiptsV2(txs, MEMO_SIGNER);
+    expect(mine.reveal?.call).toEqual(CALL_V2);
+    expect(buildReceiptsV2(txs, FEE_PAYER)).toHaveLength(1);
+  });
+
+  it("drops txs without a tag, with a non-signer tag, and non-v2 memos", async () => {
+    const notSignerTag = withTag(withMemo(COMMIT_V2), NOT_SIGNER);
+    const { conn } = mockConnection([
+      { sig: "untagged", tx: withMemo(COMMIT_V2), memo: v2memo(COMMIT_V2) },
+      { sig: "foreign-payer", tx: notSignerTag, memo: v2memo(COMMIT_V2) },
+      { sig: "v1", tx: withTag(withMemo(COMMIT)), memo: v2memo(COMMIT) },
+      { sig: "ok", tx: withTag(withMemo(COMMIT_V2)), memo: v2memo(COMMIT_V2) },
+    ]);
+    const txs = await fetchRegistry(conn, { prefilterByMemo: false });
+    expect(txs.map((t) => t.signature)).toEqual(["ok"]);
+  });
+
+  it("prefilters by signature memo and error before fetching", async () => {
+    const { conn, txCalls } = mockConnection([
+      { sig: "spam", tx: withTag(withMemo(COMMIT_V2)), memo: null },
+      { sig: "v1", tx: withTag(withMemo(COMMIT)), memo: v2memo(COMMIT) },
+      { sig: "failed", tx: withTag(withMemo(COMMIT_V2)), memo: v2memo(COMMIT_V2), err: { InstructionError: [0, "x"] } },
+      { sig: "ok", tx: withTag(withMemo(COMMIT_V2)), memo: v2memo(COMMIT_V2) },
+    ]);
+    await fetchRegistry(conn);
+    expect(txCalls).toEqual([["ok"]]);
+  });
+
+  it("pages with `before` from opts.before down to opts.until", async () => {
+    const entries = Array.from({ length: 12 }, (_, i) => ({
+      sig: `s${i}`,
+      tx: withTag(withMemo(COMMIT_V2)),
+      memo: v2memo(COMMIT_V2),
+    }));
+    const { conn, sigCalls } = mockConnection(entries);
+    const txs = await fetchRegistry(conn, { before: "s1", until: "s10", pageSize: 4 });
+    expect(sigCalls.map((c) => [c.before, c.until, c.limit])).toEqual([
+      ["s1", "s10", 4],
+      ["s5", "s10", 4],
+      ["s9", "s10", 4],
+    ]);
+    expect(txs.map((t) => t.signature)).toEqual(["s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9"]);
   });
 });

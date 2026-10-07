@@ -1,10 +1,12 @@
 import {
   ComputeBudgetProgram,
   PublicKey,
+  SystemProgram,
   TransactionInstruction,
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
+import { MEMO_PREFIX_V2, REGISTRY } from "../core/memo";
 
 /** SPL Memo program (v2) — the only on-chain program Receipts uses. */
 export const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
@@ -27,6 +29,14 @@ export function memoInstruction(signer: PublicKey, memo: string): TransactionIns
   });
 }
 
+/** v2 indexing tag target; nobody holds its key. */
+export const REGISTRY_KEY = new PublicKey(REGISTRY);
+
+/** 0-lamport System transfer signer → REGISTRY, so getSignaturesForAddress(REGISTRY) lists the tx. */
+export function registryTagInstruction(signer: PublicKey): TransactionInstruction {
+  return SystemProgram.transfer({ fromPubkey: signer, toPubkey: REGISTRY_KEY, lamports: 0 });
+}
+
 /** ComputeBudget setComputeUnitPrice instruction. */
 export function priorityFeeInstruction(microLamports: number): TransactionInstruction {
   if (!Number.isSafeInteger(microLamports) || microLamports < 0) {
@@ -41,6 +51,8 @@ export interface MemoTransactionInput {
   recentBlockhash: string;
   /** micro-lamports per CU; 0 omits the ComputeBudget instruction. */
   priorityMicroLamports?: number;
+  /** Append the registry tag. Default: on for `rcpt:2:` memos, off otherwise. */
+  registryTag?: boolean;
 }
 
 /** Unsigned legacy-message transaction (fee payer = signer), ready for MWA signAndSendTransaction. */
@@ -49,6 +61,9 @@ export function buildMemoTransaction(input: MemoTransactionInput): VersionedTran
   const feeIx = priorityFeeInstruction(fee);
   const instructions = fee > 0 ? [feeIx] : [];
   instructions.push(memoInstruction(input.signer, input.memo));
+  if (input.registryTag ?? input.memo.startsWith(MEMO_PREFIX_V2)) {
+    instructions.push(registryTagInstruction(input.signer));
+  }
   const message = new TransactionMessage({
     payerKey: input.signer,
     recentBlockhash: input.recentBlockhash,

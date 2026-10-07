@@ -40,3 +40,4 @@ dist/receipts-20261007-0004.apk
 [2026-10-07 09:41:02] iter 5/60 · open: 12 · next: T032 `src/core/secret.ts`: master from signature bytes, `saltFor(master, a
 [2026-10-07 09:42:19] iter 6/60 · open: 11 · next: T033 `src/core/price.ts` + `kucoin.ts`: `refTimeForCommit`, `priceAt` per 
 [2026-10-07 09:44:12] iter 7/60 · open: 10 · next: T034 `src/core/score.ts` + `history.ts` v2: statuses hit/miss/void/forfeit
+[2026-10-07 09:48:58] iter 8/60 · open: 9 · next: T035 `src/chain`: memo tx builder adds the registry tag (per T030 outcome)

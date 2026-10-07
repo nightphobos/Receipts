@@ -15,6 +15,8 @@ import { useEffect, useState } from "react";
 import { loadDemoState } from "./src/demo/store";
 import { DemoBanner, DemoRibbon, DemoSync } from "./src/demo/DemoChrome";
 import { ReminderSync } from "./src/notifications/ReminderSync";
+import { Onboarding } from "./src/onboarding/Onboarding";
+import { loadOnboarding } from "./src/onboarding/store";
 
 // Queries opt into an error toast with `meta: { errorToast: "<prefix>" }`.
 const queryClient = new QueryClient({
@@ -30,7 +32,7 @@ export default function App() {
   const fontsReady = useThemeFonts();
   const [demoLoaded, setDemoLoaded] = useState(false);
   useEffect(() => {
-    loadDemoState().finally(() => setDemoLoaded(true));
+    Promise.all([loadDemoState(), loadOnboarding()]).finally(() => setDemoLoaded(true));
   }, []);
   if (!fontsReady || !demoLoaded) return <View style={styles.shell} />;
   return (
@@ -46,6 +48,7 @@ export default function App() {
                 <AppNavigator />
               </ParallaxBackground>
               <DemoRibbon />
+              <Onboarding />
               <ToastHost />
             </PaperProvider>
           </SafeAreaView>

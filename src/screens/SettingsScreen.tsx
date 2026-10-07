@@ -6,6 +6,7 @@ import { SOURCE_LABEL } from "../core/price";
 import { usePriceSource } from "../hooks/usePriceSource";
 import { LEADERBOARD_SOURCE } from "../hooks/useLeaderboard";
 import { Body, Heading, Muted, PixelButton, PixelPanel, space, useParallaxScroll } from "../theme";
+import { openOnboarding } from "../onboarding/store";
 import { DEMO_ALLOWED, enterDemo, exitDemo, resetDemo, useDemo } from "../demo/store";
 
 /** Read-only build settings: cluster and data sources are fixed at build time (EXPO_PUBLIC_*). */
@@ -56,6 +57,7 @@ export function SettingsScreen() {
           Seal a price call as a hash now, reveal it after the deadline. Unrevealed calls count as misses. No
           backend, no custom program — everything is read from Solana and public price APIs.
         </Muted>
+        <PixelButton label="How it works" variant="ghost" onPress={openOnboarding} />
       </PixelPanel>
     </ScrollView>
   );

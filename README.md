@@ -46,8 +46,8 @@ You call a direction: "SOL **up ▲** in 24 h". The app seals the call on Solana
 
 - Primary number: **z = (H − M) / √N**, with N = H + M (M includes forfeits and overlaps), shown as "**+1.9σ vs coin flip**". A coin-flipper hovers around 0σ however many calls they make. Next to it: N and hit-rate.
 - Profile also shows "**hidden & forfeited: K**" and a **streak** (consecutive UTC days with at least one seal or reveal; it rewards showing up, not winning).
-- **Leaderboard eligibility**: N ≥ 10 resolved calls with a horizon ≥ 24h, commits on ≥ 3 distinct UTC days, and the wallet holds a **Seeker Genesis Token**. 1h practice calls count in your own stats but never on the leaderboard.
-- **SKR Daily** board: wallets with a Genesis Token and at least one scored SKR Daily call, ranked on SKR Daily calls only.
+- **Leaderboard eligibility**: N ≥ 10 resolved calls with a horizon ≥ 24h, commits on ≥ 3 distinct UTC days, and the wallet holds a **Seeker Genesis Token** or **≥ 100 SKR** (see [SKR integration](#skr-integration)). 1h practice calls count in your own stats but never on the leaderboard.
+- **SKR Daily** board: wallets with a Genesis Token or ≥ 100 SKR and at least one scored SKR Daily call, ranked on SKR Daily calls only (toggle: by σ or by SKR Daily streak).
 - Ranking: z descending, then N descending, then wallet address.
 
 ## Anti-cheat
@@ -59,7 +59,7 @@ Honesty of the score is the product. Each obvious trick, and why it doesn't pay:
 - **"Above $0.001" farming** (v1 problem). v2 has no target: you only call the direction from the price *after* your commit lands (t0 is the next minute boundary), so you can't seal something that is already true.
 - **Hedging** (seal ▲ and ▼, reveal only the winner). The loser is forfeited = miss, so you get 1 hit + 1 miss: z gets worse, not better. And the second commit in the same asset + class is an **overlap**, which is itself a miss.
 - **Staking one coin flip 100×** (many commits on the same move). Only one open call per wallet + asset + horizon class; every extra commit before the first one's deadline is an overlap = miss.
-- **Sybil wallets** (spray coin flips over many wallets, promote the lucky one). The leaderboard requires a Seeker Genesis Token (one per Seeker phone), N ≥ 10 calls of ≥ 24 h, on ≥ 3 different UTC days. z = (H − M)/√N also means a lucky short run isn't worth much.
+- **Sybil wallets** (spray coin flips over many wallets, promote the lucky one). The leaderboard requires a Seeker Genesis Token (one per Seeker phone) or ≥ 100 SKR, N ≥ 10 calls of ≥ 24 h, on ≥ 3 different UTC days. z = (H − M)/√N also means a lucky short run isn't worth much.
 - **Front-running the reference price.** P0 is taken at the next full minute after the block time, not at a price you saw in the app. SKR uses a median of 5 one-minute closes, so one thin print on KuCoin can't decide a call (SOL uses Pyth's aggregate price).
 - **Exact tie.** PT == P0 is **VOID**: not a hit, not a miss, not counted anywhere.
 - **Untagged or third-party transactions.** Only transactions that carry the registry tag paid by the wallet itself count, commit and reveal alike. That way the app and the indexer see exactly the same receipts. A reveal sent from another wallet is ignored.
@@ -167,9 +167,55 @@ To re-run from scratch, delete `indexer-data/registry.json` (and `prices.json` t
 
 In the app, the **RANK** tab reads `EXPO_PUBLIC_LEADERBOARD_URL` (the Pages site). If it is unset, the app computes the same leaderboard itself from the registry with the same core code (slower, but trustless).
 
-## SKR tips
+## SKR integration
 
-On another wallet's profile (from the RANK tab): **Tip 10 / 50 / 100 SKR**. It is a plain SPL `transferChecked` of SKR (mint `SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3`, 6 decimals) from your wallet to theirs, creating their token account if needed, signed by you in the wallet. Mainnet only. The app never holds funds.
+SKR (mint `SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3`, SPL Token, 6 decimals) is part of the mechanics, not only an asset you can call. Still no escrow, no stakes, nothing the app holds.
+
+### 1. SKR balance gate
+
+- `SKR_GATE_MIN = 100` whole SKR (`src/core/tip.ts`). Leaderboard eligibility = N ≥ 10 resolved ≥ 24h calls, on ≥ 3 UTC days, **and (Seeker Genesis Token OR SKR balance ≥ 100)**. The SKR Daily board uses the same "Genesis or holder" gate.
+- Balance = sum of the wallet's SKR token accounts (`getParsedTokenAccountsByOwner(wallet, {mint: SKR})`, only accounts with 6 decimals) at check time. The indexer re-checks every run, the app once per hour.
+- Profiles show both badges: **SEEKER VERIFIED** (Genesis) and **SKR HOLDER** (balance ≥ gate).
+- Why: Genesis proves one human per Seeker phone; the SKR gate lets non-Seeker Solana users compete by holding the ecosystem token. Both make sybil wallets cost something.
+
+### 2. SKR Daily streak
+
+- An **SKR Daily** call is SKR · 24h whose deadline is 12:00 UTC and at least 12 h after the commit, so everyone's daily call shares the same deadline.
+- **SKR Daily streak** = consecutive UTC days (by commit day), ending today — or yesterday while today's call isn't sealed yet — with an SKR Daily call that was not forfeited and not an overlap. A **forfeited** SKR Daily (not revealed within 24 h after the deadline) breaks the streak; a **VOID** or a miss does not. **Best streak** = longest such run ever (`skrDailyStreak` / `bestSkrDailyStreak` in `src/core/leaderboard.ts`).
+- RANK → SKR DAILY → **BY σ / BY STREAK** (streak desc, then best streak, then z, then wallet). Profile shows the SKR Daily flame separately from the general streak; the share text of an SKR Daily result ends with `🔥 SKR Daily streak: N`.
+
+### 3. Tips and "most tipped"
+
+On another wallet's profile (from the RANK tab): **Tip 10 / 50 / 100 SKR**, signed by you in the wallet, mainnet only. A tip transaction is:
+
+```
+[ComputeBudget priority fee (optional),
+ createAssociatedTokenAccountIdempotent(payer = tipper, owner = recipient, mint = SKR),
+ transferChecked(tipper's SKR ATA → recipient's SKR ATA, amount × 10^6, decimals 6, authority = tipper),
+ Memo "rcpt:2:t:<recipient wallet base58>" (signed by the tipper),
+ SystemProgram.transfer(tipper → E5YRG7uSptKAd2T4WbMyK8xadyuZ8v132Ji6XhAxX5SJ, 0 lamports)]
+```
+
+The memo names only the recipient, never the amount. The 0-lamport registry tag makes tips show up in `getSignaturesForAddress(registry)` next to the calls, so the indexer and the app find them with the same query.
+
+**Aggregation** (`src/core/tips.ts` `tipTotals` / `mostAppreciated`): a registry transaction counts as one tip when
+
+1. it succeeded, has a blockTime, and carries the registry tag paid by its signer;
+2. its memo is `rcpt:2:t:<R>`;
+3. its parsed `transferChecked`/`transfer` moves the **SKR mint** with the signer as transfer authority, into a token account owned by R, R ≠ signer, amount > 0. The amount is taken from the parsed transfer, never from the memo.
+
+Per recipient: `tipsSkr` (sum, whole SKR), `tippers` (distinct signers), `tipsCount`. **MOST TIPPED** = top 20 by `tipsSkr` desc, then `tippers` desc, then wallet. Every leaderboard row carries `tipsSkr`; profiles show "Tipped N SKR by M people".
+
+**Recompute "most tipped" by hand:**
+
+1. List the registry: `getSignaturesForAddress("E5YRG7uSptKAd2T4WbMyK8xadyuZ8v132Ji6XhAxX5SJ")` (page with `before`), keep entries with `err == null` and a memo starting with `rcpt:2:t:`:
+   ```sh
+   curl -s https://api.mainnet-beta.solana.com -H 'content-type: application/json' -d \
+     '{"jsonrpc":"2.0","id":1,"method":"getSignaturesForAddress","params":["E5YRG7uSptKAd2T4WbMyK8xadyuZ8v132Ji6XhAxX5SJ",{"limit":1000}]}' \
+     | jq -r '.result[] | select(.err == null and (.memo // "" | contains("rcpt:2:t:"))) | .signature'
+   ```
+2. For each signature, `getTransaction(sig, {encoding: "jsonParsed", maxSupportedTransactionVersion: 0})` and check: the signer also pays the 0-lamport transfer to the registry; the `transferChecked` has `mint == SKR`, `authority ==` signer, and its `destination` token account is owned by R (`owner` in `meta.postTokenBalances`); amount = `tokenAmount.amount / 10^6`.
+3. Sum per R, count distinct signers, sort as above. The result must equal `appreciated` in `leaderboard.json`.
 
 ## Human steps (to go live)
 

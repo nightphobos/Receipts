@@ -1,13 +1,19 @@
 # NOTES — run log
 
-## Morning summary (T054, 2026-10-07)
+## Morning summary (T057, 2026-10-07)
 
-**State:** `yarn test` 41 suites / 689 tests pass, `yarn typecheck` clean. Release APK `dist/receipts-20261007-1315.apk` (71 MB, `com.clockin.receipts` 1.0.0, own release key — `adb install -r` over the T043 build succeeded, so same signature; v2 rules, Night Register theme, demo mode, phase 8 features). Built from `.env` with Pyth key + custom RPC set, cluster from `.env`. **Installed on the connected Seeker via `adb install -r` — Success**; cold launch smoke test: MainActivity resumed, no FATAL in logcat. Nothing beyond launch was checked on the device; no mainnet tx has been sent by the loop.
+**State:** `yarn test` 44 suites / 738 tests pass, `yarn typecheck` clean. Release APK `dist/receipts-20261007-1330.apk` (Phase 9 SKR integration included; installed with `adb install -r` — Success, launch OK, no FATAL). Previous: `dist/receipts-20261007-1315.apk` (71 MB, `com.clockin.receipts` 1.0.0, own release key — `adb install -r` over the T043 build succeeded, so same signature; v2 rules, Night Register theme, demo mode, phase 8 features). Built from `.env` with Pyth key + custom RPC set, cluster from `.env`. **Installed on the connected Seeker via `adb install -r` — Success**; cold launch smoke test: MainActivity resumed, no FATAL in logcat. Nothing beyond launch was checked on the device; no mainnet tx has been sent by the loop.
 
 **Phase 8 — check on the phone (new in this APK):**
 - **T053 onboarding:** first launch after install shows 3 panels (Chekko print/eat/cheer) with Skip always visible, Next, step dots. Panel 3: Connect wallet / Try demo (or Start if already connected/demo). Finish → never shown again (also after app restart). Settings → ABOUT → "How it works" reopens it. Note: `adb install -r` keeps app data, so the flag may be unset (shows once) — to retest from zero: `adb shell pm clear com.clockin.receipts`.
 - **T051 reveal reminders:** on the first seal an explainer alert appears, then the Android 13+ notification permission prompt. Allow → notifications at the deadline and deadline + 20 h ("Reveal your SOL call #N", never the direction). Tap → opens that receipt's detail. Revealing cancels them. Quick check: seal a 1 h practice call and wait, or `adb shell dumpsys notification` / `adb shell dumpsys alarm | grep clockin` to see scheduled alarms. Deny → no further prompts, app works. Demo mode never schedules.
 - **T052 share card:** receipt detail (sealed, or HIT/MISS/VOID) → Share → 1080×1350 PNG card in the Android share sheet (sealed card hides the direction, dither + "Guess my side"; result card shows P0/PT/move + record line). Text is copied to the clipboard first (toast says paste it). Check the card looks right (fonts VT323, Chekko not blurry) and that demo mode shows the DEMO ribbon + `[DEMO — not a real record]`. "COPY TEXT" still works.
+
+**Phase 9 — check on the phone (new in this APK):**
+- **SKR gate (T055/T056):** My stats + any wallet profile show SEEKER VERIFIED (Genesis) and/or SKR HOLDER (≥ 100 SKR) badges; gate text says "Genesis or SKR ≥ 100". Balance cached 1 h.
+- **RANK tab:** chips OVERALL / SKR DAILY (BY σ · BY STREAK) / MOST TIPPED. Quickest check in demo mode (Try demo): you rank with an SKR Daily streak ≥ 3, MOST TIPPED lists demo wallets, a demo tip appends a simulated tip and updates totals.
+- **Real tip (needs SKR + SOL):** profile → Tip 10 SKR → approve. On Solscan the tx must have transferChecked + memo `rcpt:2:t:<recipient>` + 0-lamport transfer to `E5YRG7…X5SJ`; after refresh the recipient shows "Tipped N SKR by M people" and appears under MOST TIPPED.
+- **SKR Daily result share:** text ends with `🔥 SKR Daily streak: N`.
 
 **Blocked / open (human):**
 - T006 `[!]` — code done; real Hermes fixtures still the hand-made `*.docshape.json` (key now in `.env`; re-record if wanted).
@@ -17,7 +23,7 @@
 **Test on the Seeker (APK already installed):**
 1. **Master key determinism:** connect wallet (mainnet, needs a little SOL) → New tab key-setup card → approve the two signature prompts. Must end in *derived* mode (no "random mode" warning). If it says random, the wallet signs non-deterministically → note it.
 2. **Seal:** New → SOL ▲ or ▼, horizon 1h practice (or 24h) → Seal → approve. Chekko eats; list shows SEALED stamp + countdown + P0. On Solscan the tx has the `rcpt:2:` memo AND a 0-lamport transfer to the registry.
-3. **Reveal on a reinstall:** after the deadline, `adb uninstall com.clockin.receipts && adb install dist/receipts-20261007-1315.apk`, connect the same wallet → open the receipt → "Recover with wallet & reveal" → approve. Ceremony prints P0 → PT, stamps HIT/MISS, haptic. This proves secrets are recoverable without local storage.
+3. **Reveal on a reinstall:** after the deadline, `adb uninstall com.clockin.receipts && adb install dist/receipts-20261007-1330.apk`, connect the same wallet → open the receipt → "Recover with wallet & reveal" → approve. Ceremony prints P0 → PT, stamps HIT/MISS, haptic. This proves secrets are recoverable without local storage.
 4. **Leaderboard:** RANK tab → OVERALL / SKR DAILY. Your wallet appears only once eligible (practice 1h calls don't count; see README rules). Tap a row → read-only profile, directions hidden until revealed.
 5. **Tip:** on someone else's profile → Tip 10 SKR → approve in wallet (needs SKR + SOL). Own profile has no tip panel.
 6. **Share:** receipt detail → Share sealed call / Share result, Copy. My stats button atop Receipts list → profile v2 numbers.
@@ -273,3 +279,7 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 - Chain: `tipInstructions` = [ATA idempotent, transferChecked, memo `rcpt:2:t:<to>` (signed by tipper), 0-lamport registry tag]; ATAs derived with `allowOwnerOffCurve` (some vanity demo keys are off-curve). `chain/skrBalance.ts` `fetchSkrBalance` (getParsedTokenAccountsByOwner {mint: SKR}, `demoSkrBalance` duck hook like Genesis). fetchRegistry already attached tips (T055). `useSkrBalance` (1 h stale); in-app leaderboard + `scripts/indexer.ts` pass SKR balance + `tipTotals` (profiles get skrHolder/tips/SKR Daily streaks). `useWalletProfile(undefined)` is idle.
 - Core extras: `byStreak(rows)` (SKR DAILY "By streak"), `formatSkr`/`tippedLine` in tips.ts, `resultShareText` appends "🔥 SKR Daily streak: N" for SKR Daily results; site.ts mentions the SKR gate. UI: RANK chips OVERALL / SKR DAILY (BY σ · BY STREAK) / MOST TIPPED; MyStats + WalletProfile show SEEKER VERIFIED + SKR HOLDER badges, SKR Daily flame, "Tipped N SKR by M people", gate text "Genesis or SKR ≥ 100".
 - Demo: seed has 12 tips (4 to you), balances (you 1250; Genesis-less DemoNaow 420 = holder, DemoJun 40), your SKR Daily chain d3/d2/d1 at 12:10 UTC (replaced the d3/d2 SKR 24h calls) + today's only after 12:00 UTC → streak ≥ 3 at all test anchors. Demo tips now append a simulated tip tx (amount parsed from transferChecked) instead of refusing; DemoConnection renders parsed transfers (round-trip test in `chain/__tests__/demoConnection.test.ts`). Gates 44 suites / 738 tests; Android bundle export OK (dist/export-t056); not checked on device, no real tip sent.
+
+## T057 — done 2026-10-07
+- README: "SKR tips" replaced by "SKR integration" (gate 100 SKR + rationale, SKR Daily streak rules, exact tip tx layout + `rcpt:2:t:<recipient>` memo + registry tag, tipTotals rules, curl/jq recipe to recompute "most tipped"); Rating/anti-cheat lines now say "Genesis or ≥ 100 SKR".
+- No native deps since T054 → no prebuild; `assembleRelease` (JDK 21) → `dist/receipts-20261007-1330.apk`, `adb install -r` on the Seeker Success, launch OK (no FATAL). Morning summary updated with Phase 9 phone checks.

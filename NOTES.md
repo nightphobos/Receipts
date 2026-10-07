@@ -1,8 +1,13 @@
 # NOTES — run log
 
-## Morning summary (T043, 2026-10-07)
+## Morning summary (T054, 2026-10-07)
 
-**State:** `yarn test` 37 suites / 632 tests pass, `yarn typecheck` clean. Release APK `dist/receipts-20261007-1038.apk` (70 MB, `com.clockin.receipts` 1.0.0, signed with the own release key `21:5D:21:AC…E3:44` (verified from the APK v2 signing block), v2 rules, Night Register theme). Built from `.env` with Pyth key + custom RPC set, cluster from `.env`. **Installed on the connected Seeker (`<seeker-serial>`) via `adb install -r` — Success**; cold launch smoke test: MainActivity resumed, no FATAL in logcat. Nothing beyond launch was checked on the device; no mainnet tx has been sent by the loop.
+**State:** `yarn test` 41 suites / 689 tests pass, `yarn typecheck` clean. Release APK `dist/receipts-20261007-1315.apk` (71 MB, `com.clockin.receipts` 1.0.0, own release key — `adb install -r` over the T043 build succeeded, so same signature; v2 rules, Night Register theme, demo mode, phase 8 features). Built from `.env` with Pyth key + custom RPC set, cluster from `.env`. **Installed on the connected Seeker via `adb install -r` — Success**; cold launch smoke test: MainActivity resumed, no FATAL in logcat. Nothing beyond launch was checked on the device; no mainnet tx has been sent by the loop.
+
+**Phase 8 — check on the phone (new in this APK):**
+- **T053 onboarding:** first launch after install shows 3 panels (Chekko print/eat/cheer) with Skip always visible, Next, step dots. Panel 3: Connect wallet / Try demo (or Start if already connected/demo). Finish → never shown again (also after app restart). Settings → ABOUT → "How it works" reopens it. Note: `adb install -r` keeps app data, so the flag may be unset (shows once) — to retest from zero: `adb shell pm clear com.clockin.receipts`.
+- **T051 reveal reminders:** on the first seal an explainer alert appears, then the Android 13+ notification permission prompt. Allow → notifications at the deadline and deadline + 20 h ("Reveal your SOL call #N", never the direction). Tap → opens that receipt's detail. Revealing cancels them. Quick check: seal a 1 h practice call and wait, or `adb shell dumpsys notification` / `adb shell dumpsys alarm | grep clockin` to see scheduled alarms. Deny → no further prompts, app works. Demo mode never schedules.
+- **T052 share card:** receipt detail (sealed, or HIT/MISS/VOID) → Share → 1080×1350 PNG card in the Android share sheet (sealed card hides the direction, dither + "Guess my side"; result card shows P0/PT/move + record line). Text is copied to the clipboard first (toast says paste it). Check the card looks right (fonts VT323, Chekko not blurry) and that demo mode shows the DEMO ribbon + `[DEMO — not a real record]`. "COPY TEXT" still works.
 
 **Blocked / open (human):**
 - T006 `[!]` — code done; real Hermes fixtures still the hand-made `*.docshape.json` (key now in `.env`; re-record if wanted).
@@ -12,7 +17,7 @@
 **Test on the Seeker (APK already installed):**
 1. **Master key determinism:** connect wallet (mainnet, needs a little SOL) → New tab key-setup card → approve the two signature prompts. Must end in *derived* mode (no "random mode" warning). If it says random, the wallet signs non-deterministically → note it.
 2. **Seal:** New → SOL ▲ or ▼, horizon 1h practice (or 24h) → Seal → approve. Chekko eats; list shows SEALED stamp + countdown + P0. On Solscan the tx has the `rcpt:2:` memo AND a 0-lamport transfer to the registry.
-3. **Reveal on a reinstall:** after the deadline, `adb uninstall com.clockin.receipts && adb install dist/receipts-20261007-1038.apk`, connect the same wallet → open the receipt → "Recover with wallet & reveal" → approve. Ceremony prints P0 → PT, stamps HIT/MISS, haptic. This proves secrets are recoverable without local storage.
+3. **Reveal on a reinstall:** after the deadline, `adb uninstall com.clockin.receipts && adb install dist/receipts-20261007-1315.apk`, connect the same wallet → open the receipt → "Recover with wallet & reveal" → approve. Ceremony prints P0 → PT, stamps HIT/MISS, haptic. This proves secrets are recoverable without local storage.
 4. **Leaderboard:** RANK tab → OVERALL / SKR DAILY. Your wallet appears only once eligible (practice 1h calls don't count; see README rules). Tap a row → read-only profile, directions hidden until revealed.
 5. **Tip:** on someone else's profile → Tip 10 SKR → approve in wallet (needs SKR + SOL). Own profile has no tip panel.
 6. **Share:** receipt detail → Share sealed call / Share result, Copy. My stats button atop Receipts list → profile v2 numbers.
@@ -254,3 +259,7 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 ## T053 — done 2026-10-07
 - Core `onboarding.ts` (`ONBOARDED_KEY` = `rcpt:onboarded`, `ONBOARDING_PANELS` copy + Chekko pose print/eat/cheer, `shouldShowOnboarding`, `pageFromOffset`, `panelA11yLabel`), tested. App: `src/onboarding/store.ts` (singleton, loaded in App.tsx with demo state; finish → flag "1") + `Onboarding.tsx` full-screen overlay above the navigator (horizontal paging ScrollView, no new deps; Skip always visible, Next, step dots; panel 3 = Connect wallet / Try demo, or Start when a wallet/demo account exists; connect error → toast, overlay stays).
 - Settings → ABOUT → "How it works" reopens it. Android bundle export OK; not checked on device.
+
+## T054 — done 2026-10-07
+- Gates: 41 suites / 689 tests, typecheck clean. `npx expo prebuild --platform android --no-install` only added the expo-notifications color meta-data + `notification_icon_color` (committed); own signing config in build.gradle survived. `assembleRelease` with JDK 21 OK → `dist/receipts-20261007-1315.apk`, `adb install -r` on the Seeker Success, launch OK (no FATAL).
+- Morning summary at the top now lists phone checks for T051–T053. Not tested on the device beyond launch.

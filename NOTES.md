@@ -2,7 +2,7 @@
 
 ## Morning summary (T043, 2026-10-07)
 
-**State:** `yarn test` 37 suites / 632 tests pass, `yarn typecheck` clean. Release APK `dist/receipts-20261007-1038.apk` (70 MB, `com.clockin.receipts` 1.0.0, debug-keystore signed, v2 rules, Night Register theme). Built from `.env` with Pyth key + custom RPC set, cluster from `.env`. **Installed on the connected Seeker (`<seeker-serial>`) via `adb install -r` — Success**; cold launch smoke test: MainActivity resumed, no FATAL in logcat. Nothing beyond launch was checked on the device; no mainnet tx has been sent by the loop.
+**State:** `yarn test` 37 suites / 632 tests pass, `yarn typecheck` clean. Release APK `dist/receipts-20261007-1038.apk` (70 MB, `com.clockin.receipts` 1.0.0, signed with the own release key `21:5D:21:AC…E3:44` (verified from the APK v2 signing block), v2 rules, Night Register theme). Built from `.env` with Pyth key + custom RPC set, cluster from `.env`. **Installed on the connected Seeker (`<seeker-serial>`) via `adb install -r` — Success**; cold launch smoke test: MainActivity resumed, no FATAL in logcat. Nothing beyond launch was checked on the device; no mainnet tx has been sent by the loop.
 
 **Blocked / open (human):**
 - T006 `[!]` — code done; real Hermes fixtures still the hand-made `*.docshape.json` (key now in `.env`; re-record if wanted).

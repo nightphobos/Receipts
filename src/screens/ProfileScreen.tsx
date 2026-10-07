@@ -8,13 +8,18 @@ import * as Clipboard from "expo-clipboard";
 import { formatSigma } from "../core/ceremony";
 import { LEADERBOARD_MIN_DAYS, LEADERBOARD_MIN_N, eligibility, stats, statsV2, streak } from "../core/score";
 import { formatHitRate, shareText } from "../core/share";
+import { skrDailyStreak } from "../core/leaderboard";
+import { SKR_GATE_MIN, isSkrHolder } from "../core/tip";
+import { tippedLine } from "../core/tips";
 import { exportAll } from "../storage/secrets";
 import { useReceipts, useReceiptsV2 } from "../hooks/useReceipts";
 import { useNowSec } from "../hooks/useNow";
 import { usePriceSource } from "../hooks/usePriceSource";
 import { DemoBadge } from "../components/receipt/demo-badge";
-import { SeekerBadge } from "../components/receipt/seeker-badge";
+import { SeekerBadge, SkrHolderBadge } from "../components/receipt/seeker-badge";
 import { useSeekerGenesis } from "../hooks/useSeekerGenesis";
+import { useSkrBalance } from "../hooks/useSkrBalance";
+import { useWalletProfile } from "../hooks/useLeaderboard";
 import { useCluster } from "../components/cluster/cluster-data-access";
 import { ConnectButton } from "../components/sign-in/sign-in-ui";
 import { useAuthorization } from "../utils/useAuthorization";
@@ -54,6 +59,9 @@ export function ProfileScreen() {
   const legacyQuery = useReceipts(selectedAccount?.publicKey);
   const v2Query = useReceiptsV2(selectedAccount?.publicKey);
   const genesis = useSeekerGenesis(selectedAccount?.publicKey);
+  const skr = useSkrBalance(selectedAccount?.publicKey);
+  const holder = skr.data != null && isSkrHolder(skr.data);
+  const tipped = tippedLine(useWalletProfile(selectedAccount?.publicKey.toBase58()).data?.tips);
   const now = useNowSec();
 
   const receipts = {
@@ -71,7 +79,11 @@ export function ProfileScreen() {
   const listV2 = useMemo(() => (v2Query.data ?? []).map((r) => r.receipt), [v2Query.data]);
   const s2 = useMemo(() => statsV2(listV2, now), [listV2, now]);
   const days = useMemo(() => streak(listV2, now), [listV2, now]);
-  const elig = useMemo(() => eligibility(listV2, now, genesis.data === true), [listV2, now, genesis.data]);
+  const skrDays = useMemo(() => skrDailyStreak(listV2, now), [listV2, now]);
+  const elig = useMemo(
+    () => eligibility(listV2, now, genesis.data === true, holder),
+    [listV2, now, genesis.data, holder],
+  );
 
   const copyShareText = async () => {
     const text = shareText(list, appNowSec(), selectedCluster.network, { demo });
@@ -103,6 +115,7 @@ export function ProfileScreen() {
           onRefresh={() => {
             receipts.refetch();
             genesis.refetch();
+            skr.refetch();
           }}
           tintColor={colors.accent}
           colors={[colors.accent]}
@@ -118,7 +131,10 @@ export function ProfileScreen() {
       {selectedAccount ? (
         <View style={styles.walletRow}>
           <Muted selectable>{ellipsify(selectedAccount.publicKey.toBase58(), 8)}</Muted>
-          {genesis.data === true && <SeekerBadge />}
+          <View style={styles.badges}>
+            {genesis.data === true && <SeekerBadge />}
+            {holder && <SkrHolderBadge />}
+          </View>
         </View>
       ) : (
         <>
@@ -160,8 +176,18 @@ export function ProfileScreen() {
                 <PixelIcon name="flame" scale={1.5} color={colors.down} />
                 <Body>{`streak: ${days} day${days === 1 ? "" : "s"}`}</Body>
               </View>
+              <View style={styles.streakRow}>
+                <PixelIcon name="flame" scale={1.5} color={colors.accent} />
+                <Body>{`SKR Daily streak: ${skrDays} day${skrDays === 1 ? "" : "s"}`}</Body>
+              </View>
+              {tipped && (
+                <View style={styles.streakRow}>
+                  <PixelIcon name="coin" scale={1.5} color={colors.accent} />
+                  <Body>{tipped}</Body>
+                </View>
+              )}
               <Muted>
-                {`Leaderboard: ${elig.eligible ? "eligible" : "not yet"} · ${elig.n}/${LEADERBOARD_MIN_N} scored ≥24h calls · ${elig.days}/${LEADERBOARD_MIN_DAYS} days · Genesis ${elig.hasGenesis ? "✓" : "✕"}`}
+                {`Leaderboard: ${elig.eligible ? "eligible" : "not yet"} · ${elig.n}/${LEADERBOARD_MIN_N} scored ≥24h calls · ${elig.days}/${LEADERBOARD_MIN_DAYS} days · Genesis ${elig.hasGenesis ? "✓" : "✕"} or SKR ≥ ${SKR_GATE_MIN} ${holder ? "✓" : "✕"}`}
               </Muted>
               <Muted>
                 Misses include forfeited and overlapping calls. VOID (price unchanged) is not counted. 1h practice
@@ -215,4 +241,5 @@ const styles = StyleSheet.create({
   sigma: { fontFamily: fonts.number, fontSize: 40, color: colors.accent },
   demoRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
   streakRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  badges: { flexDirection: "row", flexWrap: "wrap", gap: space.xs },
 });

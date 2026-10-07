@@ -14,6 +14,7 @@ import { encodeCommitMemoV2, encodeRevealMemoV2 } from "./memo";
 import { refTimeForCommit, type PriceSource } from "./price";
 import type { PythPrice } from "./pyth";
 import { MASTER_MESSAGE, masterFromSignature, saltFor } from "./secret";
+import { SKR_MINT, tipMemo } from "./tip";
 
 /** Valid base58 public keys that visibly start with "Demo" (found by search; nobody holds their keys). */
 export const DEMO_YOU = "DemoYouaXvhkgX93EHzifMF7urqTHq3mxo7Le4GWmGW1";
@@ -43,6 +44,17 @@ export const DEMO_BLOCKHASH = "11111111111111111111111111111111";
 export const isDemoWallet = (w: string): boolean => w.startsWith("Demo");
 export const isDemoSignature = (s: string): boolean => s.startsWith(DEMO_SIG_PREFIX);
 export const demoHasGenesis = (w: string): boolean => isDemoWallet(w) && !NO_GENESIS.has(w);
+
+/** Simulated whole-SKR balances: you hold plenty; one Genesis-less wallet passes the SKR gate, the other doesn't. */
+const SKR_BALANCES: Record<string, number> = {
+  [DEMO_YOU]: 1250,
+  [DEMO_OTHERS[0]]: 4800,
+  [DEMO_OTHERS[2]]: 310,
+  [DEMO_OTHERS[5]]: 75,
+  [DEMO_OTHERS[7]]: 420,
+  [DEMO_OTHERS[11]]: 40,
+};
+export const demoSkrBalance = (w: string): number => (isDemoWallet(w) ? (SKR_BALANCES[w] ?? 0) : 0);
 /** Demo share text: prefixed, and links replaced (demo signatures do not exist on Solana). */
 export const demoShareText = (text: string): string =>
   `${DEMO_SHARE_PREFIX}\n${text.replace(/https?:\/\/\S+/g, "(simulated)")}`;
@@ -108,6 +120,23 @@ export function demoPriceSource(nowFn: () => number): PriceSource {
 /** One memo tx on the simulated chain, tagged like a real v2 tx. */
 export function demoTx(wallet: string, blockTime: number, memo: string): MemoTx {
   return { signature: demoSignature(wallet, blockTime, memo), blockTime, signer: wallet, memo, failed: false, tagged: true };
+}
+
+/** A tagged SKR tip on the simulated chain: memo `rcpt:2:t:<to>` plus the parsed transfer. */
+export function demoTipTx(from: string, to: string, amount: number, blockTime: number): MemoTx {
+  return { ...demoTx(from, blockTime, tipMemo(to)), tip: { mint: SKR_MINT, from, to, amount } };
+}
+
+/** Seeded tips: [from, to, whole SKR, days ago, hour UTC]. Indexes into DEMO_OTHERS; -1 = you. */
+const SEED_TIPS: [number, number, number, number, number][] = [
+  [0, -1, 50, 6, 10], [1, -1, 10, 4, 18], [2, -1, 100, 2, 9], [5, -1, 10, 1, 21],
+  [-1, 0, 50, 5, 12], [3, 0, 100, 7, 8], [5, 0, 50, 3, 16], [8, 0, 10, 2, 11],
+  [6, 1, 50, 6, 20], [9, 1, 10, 1, 7], [4, 2, 10, 8, 14], [0, 3, 100, 4, 22],
+];
+
+function seedTips(now: number): MemoTx[] {
+  const w = (i: number) => (i < 0 ? DEMO_YOU : DEMO_OTHERS[i]);
+  return SEED_TIPS.map(([from, to, amount, d, h]) => demoTipTx(w(from), w(to), amount, Math.floor((now - d * D) / D) * D + h * H));
 }
 
 function prng(seed: number): () => number {
@@ -196,7 +225,7 @@ function yourPlans(now: number): Plan[] {
   ];
   for (const [d, want, rev] of sol24) plans.push(p("SOL", day(d, 9 + (10 - d) * 0.5), D, want, rev)); // 30 min later each day: no overlap even if a commit shifts
   // SKR 24h every other day, plus one overlap right after the first.
-  const skr24: [number, number, Want][] = [[10, 13, "hit"], [9, 15, "hit"], [5, 14, "miss"], [3, 14, "hit"], [2, 15, "hit"]];
+  const skr24: [number, number, Want][] = [[10, 13, "hit"], [9, 15, "hit"], [5, 14, "miss"]];
   for (const [d, h, want] of skr24) plans.push(p("SKR", day(d, h), D, want, 2 * H));
   plans.push(p("SKR", day(9, 17), D, "hit", 1 * H)); // overlap (SKR 24h still open) → counts as a miss
   // VOID: deadline fixed, the commit slides within 24–36 h before it until P0 == PT (thin SKR market).
@@ -209,11 +238,18 @@ function yourPlans(now: number): Plan[] {
   plans.push(p("SKR", day(5, 18), 3 * D, "any", null)); // forfeited
   // 1h practice yesterday.
   plans.push(p("SOL", day(1, 20), H, "hit", 10 * 60));
-  // Open right now: one awaiting reveal (try "Reveal" immediately), one sealed 24h, one SKR Daily.
+  // Open right now: one awaiting reveal (try "Reveal" immediately), one sealed 3d (+ the SKR Daily below).
   plans.push(p("SOL", now - 7 * D - 2 * H, 7 * D, "hit", null)); // the only 7d call: awaiting reveal
   plans.push(p("SOL", now - 19 * H, 3 * D, "any", null)); // sealed 3d (previous SOL 3d ended days ago)
+  // SKR Daily chain: sealed 12:10 UTC on each of the last 3 days (each right after the previous deadline),
+  // plus today's once today's noon deadline has passed → SKR Daily streak ≥ 3.
+  for (const d of [3, 2, 1]) {
+    const c = day(d, 12) + 10 * 60;
+    plans.push({ ...p("SKR", c, 0, d === 2 ? "miss" : "hit", d === 1 ? H : 2 * H), deadline: { at: skrDailyDeadline(c) } });
+  }
   const skrDailyCommit = now - 3 * H;
-  plans.push({ ...p("SKR", skrDailyCommit, 0, "any", null), deadline: { at: skrDailyDeadline(skrDailyCommit) } });
+  if (skrDailyCommit >= day(0, 12))
+    plans.push({ ...p("SKR", skrDailyCommit, 0, "any", null), deadline: { at: skrDailyDeadline(skrDailyCommit) } });
   return plans;
 }
 
@@ -257,6 +293,7 @@ export function buildDemoSeed(anchorSec: number): MemoTx[] {
   const txs = [
     ...yourPlans(now).flatMap((pl) => realize(pl, rnd, you)),
     ...otherPlans(now, rnd).flatMap((pl) => realize(pl, rnd, null)),
+    ...seedTips(now),
   ];
   return txs.filter((t) => t.blockTime !== null && t.blockTime <= now).sort((a, b) => (b.blockTime ?? 0) - (a.blockTime ?? 0));
 }

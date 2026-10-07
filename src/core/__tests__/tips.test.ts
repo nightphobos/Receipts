@@ -1,6 +1,6 @@
 import type { MemoTx } from "../history";
 import { SKR_MINT, tipMemo } from "../tip";
-import { mostAppreciated, tipTotals } from "../tips";
+import { mostAppreciated, tipTotals, tippedLine } from "../tips";
 
 const A = "AaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA";
 const B = "BbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbB";
@@ -60,5 +60,16 @@ describe("mostAppreciated", () => {
       [A, 100, 1],
     ]);
     expect(mostAppreciated(t, 1).map((r) => r.wallet)).toEqual([C]);
+  });
+});
+
+describe("tippedLine", () => {
+  it("says who tipped how much, or null without tips", () => {
+    expect(tippedLine({ tipsSkr: 160, tippers: 3 })).toBe("Tipped 160 SKR by 3 people");
+    expect(tippedLine({ tipsSkr: 12.5, tippers: 1 })).toBe("Tipped 12.5 SKR by 1 person");
+    expect(tippedLine({ tipsSkr: 1234567, tippers: 2 })).toBe("Tipped 1,234,567 SKR by 2 people");
+    expect(tippedLine({ tipsSkr: 0.000001, tippers: 1 })).toBe("Tipped 0.000001 SKR by 1 person");
+    expect(tippedLine({ tipsSkr: 0, tippers: 0 })).toBeNull();
+    expect(tippedLine(undefined)).toBeNull();
   });
 });

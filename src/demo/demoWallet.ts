@@ -1,8 +1,10 @@
 /** Demo stand-in for the Mobile Wallet Adapter: never opens a wallet, never signs or sends anything real. */
 import { PublicKey, VersionedTransaction, type Transaction } from "@solana/web3.js";
 import { DEMO_YOU, demoSignMessage } from "../core/demoData";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { MEMO_PROGRAM_ID } from "../chain/memoTx";
-import { submitDemoMemo } from "./store";
+import { SKR_DECIMALS, parseTipMemo } from "../core/tip";
+import { submitDemoMemo, submitDemoTip } from "./store";
 
 export const DEMO_PUBLIC_KEY = new PublicKey(DEMO_YOU);
 
@@ -25,10 +27,26 @@ function memoOf(tx: Transaction | VersionedTransaction): string | null {
   return ix ? ix.data.toString("utf8") : null;
 }
 
-/** Seal/reveal memos go onto the simulated chain; anything else (tips) is refused honestly. */
+/** Whole-token amount of the tx's SPL transferChecked (opcode 12), if any. */
+function transferCheckedAmount(tx: Transaction | VersionedTransaction): number | null {
+  const datas =
+    tx instanceof VersionedTransaction
+      ? tx.message.compiledInstructions
+          .filter((ix) => tx.message.staticAccountKeys[ix.programIdIndex]?.equals(TOKEN_PROGRAM_ID))
+          .map((ix) => Buffer.from(ix.data))
+      : tx.instructions.filter((i) => i.programId.equals(TOKEN_PROGRAM_ID)).map((i) => Buffer.from(i.data));
+  const d = datas.find((b) => b[0] === 12 && b.length >= 10);
+  return d ? Number(d.readBigUInt64LE(1)) / 10 ** SKR_DECIMALS : null;
+}
+
+/** Seal/reveal memos and tips go onto the simulated chain; anything else is refused honestly. */
 export async function demoSignAndSend(tx: Transaction | VersionedTransaction): Promise<string> {
   const memo = memoOf(tx);
-  if (memo?.startsWith("rcpt:")) return submitDemoMemo(memo);
+  const recipient = memo ? parseTipMemo(memo) : null;
+  if (recipient) {
+    const amount = transferCheckedAmount(tx);
+    if (amount !== null && amount > 0) return submitDemoTip(recipient, amount);
+  } else if (memo?.startsWith("rcpt:")) return submitDemoMemo(memo);
   throw new Error("Demo mode — nothing was sent");
 }
 

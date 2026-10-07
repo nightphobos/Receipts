@@ -133,3 +133,28 @@ describe("resultShareText", () => {
     expect(resultShareText(hit2, all, NOW, "mainnet-beta")!.split("\n")[0]).toBe("🧾 RECEIPT #1 — ✅ HIT");
   });
 });
+
+describe("resultShareText SKR Daily streak", () => {
+  const MON = 1791158400; // Mon 2026-10-05 00:00 UTC
+  const daily = (d: number) =>
+    rcpt({
+      asset: "SKR",
+      dir: "up",
+      commit: { signature: `skr${d}`, blockTime: MON + d * 86400 + 13 * 3600 },
+      deadline: MON + (d + 1) * 86400 + 12 * 3600,
+      p0: 0.0167,
+      pt: 0.0171,
+    });
+  const dailies = [daily(0), daily(1), daily(2)];
+  const now = MON + 3 * 86400 + 13 * 3600; // Thu 13:00, today's not sealed yet
+
+  it("appends the SKR Daily streak to an SKR Daily result", () => {
+    const lines = resultShareText(dailies[2], dailies, now, "mainnet-beta")!.split("\n");
+    expect(lines[lines.length - 1]).toBe("🔥 SKR Daily streak: 3");
+  });
+
+  it("leaves other calls without it", () => {
+    const sol = rcpt({ dir: "up", p0: 150, pt: 160 });
+    expect(resultShareText(sol, [...dailies, sol], NOW, "mainnet-beta")).not.toContain("SKR Daily streak");
+  });
+});

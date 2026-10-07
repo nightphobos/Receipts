@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { fetchRegistry } from "../chain/fetchHistory";
 import { hasSeekerGenesisToken } from "../chain/genesis";
+import { fetchSkrBalance } from "../chain/skrBalance";
 import type { Leaderboard, WalletProfile } from "../core/leaderboard";
 import {
   computeLeaderboard,
@@ -51,6 +52,7 @@ function useComputedLeaderboard(enabled: boolean) {
         nowSec: appNowSec(),
         price: async (asset, ts) => (await priceAt(source, asset, ts))?.price ?? null,
         hasGenesis: (wallet) => hasSeekerGenesisToken(connection, new PublicKey(wallet)),
+        skrBalance: (wallet) => fetchSkrBalance(connection, new PublicKey(wallet)),
       });
     },
   });
@@ -75,19 +77,19 @@ export function useLeaderboard() {
   return { ...computed, data: computed.data?.leaderboard };
 }
 
-/** Read-only profile of any wallet (null = no v2 receipts on record). */
-export function useWalletProfile(wallet: string) {
+/** Read-only profile of any wallet (null = no v2 receipts on record); idle without a wallet. */
+export function useWalletProfile(wallet: string | undefined) {
   const base = useDemo().active ? null : LEADERBOARD_BASE;
-  const computed = useComputedLeaderboard(base === null);
+  const computed = useComputedLeaderboard(base === null && !!wallet);
   const site = useQuery({
     queryKey: ["leaderboard", "site-profile", base, wallet],
-    enabled: base !== null,
+    enabled: base !== null && !!wallet,
     staleTime: 60 * 1000,
     queryFn: async (): Promise<WalletProfile | null> => {
-      const json = await fetchJson(profileUrl(base as string, wallet));
+      const json = await fetchJson(profileUrl(base as string, wallet as string));
       return json === null ? null : parseWalletProfile(json);
     },
   });
   if (base !== null) return site;
-  return { ...computed, data: computed.data ? (computed.data.profiles.get(wallet) ?? null) : undefined };
+  return { ...computed, data: computed.data && wallet ? (computed.data.profiles.get(wallet) ?? null) : undefined };
 }

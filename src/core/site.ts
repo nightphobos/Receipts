@@ -2,6 +2,7 @@
  * Minimal static pages for the indexer's GitHub Pages site (site/index.html, site/u/<wallet>.html).
  * Pure TS: no RN/Expo imports. The JSON files next to them are the data; these are for share links.
  */
+import { SKR_GATE_MIN } from "./tip";
 import { formatChangePct, formatZ } from "./ceremony";
 import { formatUsd, solscanTxUrl } from "./format";
 import type { Leaderboard, LeaderboardRow, ProfileReceipt, WalletProfile } from "./leaderboard";
@@ -55,7 +56,7 @@ export function renderLeaderboardHtml(lb: Leaderboard): string {
     `<h1>🧾 Receipts leaderboard</h1>
 <p class="muted">Updated ${escapeHtml(formatUtcDayTime(lb.generatedAt))} · ${lb.wallets} wallets · <a href="leaderboard.json">leaderboard.json</a></p>
 <h2>Overall (≥ 24h calls)</h2>
-<p class="muted">z = (hits − misses) / √N vs a coin flip. Eligible: N ≥ 10, commits on ≥ 3 UTC days, Seeker Genesis Token.</p>
+<p class="muted">z = (hits − misses) / √N vs a coin flip. Eligible: N ≥ 10, commits on ≥ 3 UTC days, Seeker Genesis Token or ≥ ${SKR_GATE_MIN} SKR.</p>
 ${table(lb.overall, "No eligible wallets yet.")}
 <h2>SKR Daily</h2>
 ${table(lb.skrDaily, "No SKR Daily calls scored yet.")}`,
@@ -96,7 +97,7 @@ export function renderProfileHtml(p: WalletProfile): string {
 <h1>🧾 ${escapeHtml(p.wallet)}</h1>
 <p><b>${formatZ(s.z)} vs coin flip</b> · N ${s.n} · hit-rate ${formatHitRate(s.hitRate)} · ${s.hits} hits · ${s.misses} misses</p>
 <p class="muted">hidden &amp; forfeited: ${s.forfeited} · overlaps: ${s.overlaps} · void: ${s.voids} · pending: ${s.pending} · streak: ${p.streak}</p>
-<p class="muted">Leaderboard: ${e.eligible ? "eligible" : "not eligible"} (N ${e.n}/10, days ${e.days}/3, Seeker Genesis ${p.hasGenesis ? "yes" : "no"}) · <a href="${escapeHtml(p.wallet)}.json">json</a></p>
+<p class="muted">Leaderboard: ${e.eligible ? "eligible" : "not eligible"} (N ${e.n}/10, days ${e.days}/3, Seeker Genesis ${p.hasGenesis ? "yes" : "no"}, SKR holder ${p.skrHolder ? "yes" : "no"}) · <a href="${escapeHtml(p.wallet)}.json">json</a></p>
 <table><tr><th>Sealed</th><th>Call</th><th>Deadline</th><th>P0 → PT</th><th>Result</th><th>Verify</th></tr>
 ${p.receipts.map(receiptRow).join("\n")}</table>`,
   );

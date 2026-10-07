@@ -4,7 +4,7 @@
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSyncExternalStore } from "react";
-import { buildDemoSeed, demoTx, DEMO_YOU } from "../core/demoData";
+import { buildDemoSeed, demoTipTx, demoTx, DEMO_YOU } from "../core/demoData";
 import type { MemoTx } from "../core/history";
 import { decodeMemoV2 } from "../core/memo";
 import { deleteSecret } from "../storage/secrets";
@@ -22,7 +22,7 @@ export interface DemoState {
   anchor: number;
   /** Time warp: demo clock = real clock + offsetSec. */
   offsetSec: number;
-  /** Txs "sent" in this demo session (seals/reveals), appended to the seed. */
+  /** Txs "sent" in this demo session (seals/reveals/tips), appended to the seed. */
   extra: MemoTx[];
   /** Bumped on every change (query invalidation). */
   version: number;
@@ -80,6 +80,13 @@ export function demoChainTxs(): MemoTx[] {
 /** Append a memo "sent" by the demo player at the current demo time; returns its fake signature. */
 export function submitDemoMemo(memo: string): string {
   const tx = demoTx(DEMO_YOU, appNowSec(), memo);
+  set({ extra: [...state.extra, tx] });
+  return tx.signature;
+}
+
+/** Append a simulated SKR tip from the demo player (amount = the pressed button); returns its fake signature. */
+export function submitDemoTip(recipient: string, amount: number): string {
+  const tx = demoTipTx(DEMO_YOU, recipient, amount, appNowSec());
   set({ extra: [...state.extra, tx] });
   return tx.signature;
 }

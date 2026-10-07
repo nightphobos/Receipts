@@ -63,3 +63,16 @@ export function mostAppreciated(totals: ReadonlyMap<string, TipTotal>, limit = A
     .slice(0, limit)
     .map(({ wallet, tipsSkr, tippers }) => ({ wallet, tipsSkr, tippers }));
 }
+
+/** Whole SKR with thousands separators and up to 6 decimals, trailing zeros trimmed: "1,234.5". */
+export function formatSkr(n: number): string {
+  const [int, frac = ""] = n.toFixed(6).split(".");
+  const f = frac.replace(/0+$/, "");
+  return int.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (f ? `.${f}` : "");
+}
+
+/** Profile line "Tipped N SKR by M people"; null when nothing was received. */
+export function tippedLine(t: { tipsSkr: number; tippers: number } | undefined): string | null {
+  if (!t || t.tipsSkr <= 0) return null;
+  return `Tipped ${formatSkr(t.tipsSkr)} SKR by ${t.tippers} ${t.tippers === 1 ? "person" : "people"}`;
+}

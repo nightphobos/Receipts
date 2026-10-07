@@ -16,6 +16,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { fetchRegistry } from "../src/chain/fetchHistory";
 import { hasSeekerGenesisToken } from "../src/chain/genesis";
 import { REGISTRY_KEY } from "../src/chain/memoTx";
+import { fetchSkrBalance } from "../src/chain/skrBalance";
 import type { MemoTx } from "../src/core/history";
 import {
   buildLeaderboard,
@@ -30,6 +31,8 @@ import {
 import { priceAt, selectPriceSource } from "../src/core/price";
 import type { FetchFn } from "../src/core/pyth";
 import { renderLeaderboardHtml, renderProfileHtml } from "../src/core/site";
+import { isSkrHolder } from "../src/core/tip";
+import { tipTotals } from "../src/core/tips";
 
 const ROOT = path.join(__dirname, "..");
 const DATA_DIR = path.join(ROOT, "indexer-data");
@@ -122,28 +125,41 @@ async function main() {
   writeFile(PRICES_FILE, toJson(sortedCache));
   console.log(`prices: ${needs.length} fetched (${failed} failed), ${Object.keys(cache).length} cached`);
 
-  // Seeker Genesis Token (re-checked every run: it can be transferred).
+  // Seeker Genesis Token and SKR balance gate (re-checked every run: tokens can be transferred).
   const entries: WalletEntry[] = [];
   for (const [wallet, receipts] of wallets) {
     let hasGenesis = false;
+    let skrHolder = false;
     try {
       hasGenesis = await hasSeekerGenesisToken(conn, new PublicKey(wallet));
     } catch (e) {
       console.warn(`genesis ${wallet}: ${(e as Error).message}`);
     }
-    entries.push({ wallet, receipts: receipts.map((r) => withPrices(r, cache)), hasGenesis });
+    try {
+      skrHolder = isSkrHolder(await fetchSkrBalance(conn, new PublicKey(wallet)));
+    } catch (e) {
+      console.warn(`skr balance ${wallet}: ${(e as Error).message}`);
+    }
+    entries.push({ wallet, receipts: receipts.map((r) => withPrices(r, cache)), hasGenesis, skrHolder });
   }
 
-  const lb = buildLeaderboard(entries, nowSec);
+  // SKR tips (rcpt:2:t: memos + registry tag; amounts from the parsed transfers).
+  const tips = tipTotals(txs);
+  const lb = buildLeaderboard(entries, nowSec, tips);
   writeFile(path.join(SITE_DIR, "leaderboard.json"), toJson(lb));
   writeFile(path.join(SITE_DIR, "index.html"), renderLeaderboardHtml(lb));
   writeFile(path.join(SITE_DIR, ".nojekyll"), "");
   for (const e of entries) {
-    const profile = walletProfile(e.wallet, e.receipts, e.hasGenesis, nowSec);
+    const profile = walletProfile(e.wallet, e.receipts, e.hasGenesis, nowSec, {
+      skrHolder: e.skrHolder,
+      tips: tips.get(e.wallet),
+    });
     writeFile(path.join(SITE_DIR, "u", `${e.wallet}.json`), toJson(profile));
     writeFile(path.join(SITE_DIR, "u", `${e.wallet}.html`), renderProfileHtml(profile));
   }
-  console.log(`site: ${entries.length} wallets, overall ${lb.overall.length}, SKR Daily ${lb.skrDaily.length}`);
+  console.log(
+    `site: ${entries.length} wallets, overall ${lb.overall.length}, SKR Daily ${lb.skrDaily.length}, tipped ${lb.appreciated.length}`,
+  );
 }
 
 main().catch((e) => {

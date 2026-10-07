@@ -1,11 +1,12 @@
-import { ComputeBudgetProgram, PublicKey } from "@solana/web3.js";
+import { ComputeBudgetProgram, PublicKey, SystemProgram } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { SKR_MINT } from "../../core/tip";
-import { DEFAULT_PRIORITY_MICRO_LAMPORTS } from "../memoTx";
+import { REGISTRY } from "../../core/memo";
+import { SKR_MINT, parseTipMemo } from "../../core/tip";
+import { DEFAULT_PRIORITY_MICRO_LAMPORTS, MEMO_PROGRAM_ID } from "../memoTx";
 import { SKR_MINT_KEY, buildTipTransaction, tipInstructions } from "../tipTx";
 
 const from = new PublicKey("9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM");
@@ -36,6 +37,21 @@ describe("tipInstructions", () => {
     expect(transfer.keys[3].isSigner).toBe(true);
   });
 
+  it("ends with memo rcpt:2:t:<recipient> signed by the tipper and the 0-lamport registry tag", () => {
+    const ixs = tipInstructions(from, to, 10);
+    expect(ixs).toHaveLength(4);
+    const [, , memo, tag] = ixs;
+    expect(memo.programId.equals(MEMO_PROGRAM_ID)).toBe(true);
+    expect(memo.data.toString("utf8")).toBe(`rcpt:2:t:${to.toBase58()}`);
+    expect(parseTipMemo(memo.data.toString("utf8"))).toBe(to.toBase58());
+    expect(memo.keys).toHaveLength(1);
+    expect(memo.keys[0].pubkey.equals(from)).toBe(true);
+    expect(memo.keys[0].isSigner).toBe(true);
+    expect(tag.programId.equals(SystemProgram.programId)).toBe(true);
+    expect(tag.keys.map((k) => k.pubkey.toBase58())).toEqual([from.toBase58(), REGISTRY]);
+    expect(tag.data.readBigUInt64LE(4)).toBe(0n); // lamports
+  });
+
   it("refuses self-tips and invalid amounts", () => {
     expect(() => tipInstructions(from, from, 10)).toThrow();
     expect(() => tipInstructions(from, to, 0)).toThrow();
@@ -44,7 +60,7 @@ describe("tipInstructions", () => {
 });
 
 describe("buildTipTransaction", () => {
-  it("is a legacy tx paid by the tipper: priority fee + ATA + transfer, nothing else", () => {
+  it("is a legacy tx paid by the tipper: priority fee + ATA + transfer + memo + tag, nothing else", () => {
     const tx = buildTipTransaction({ from, to, amount: 100, recentBlockhash: blockhash });
     const msg = tx.message;
     expect(msg.version).toBe("legacy");
@@ -56,12 +72,14 @@ describe("buildTipTransaction", () => {
       ComputeBudgetProgram.programId.toBase58(),
       ASSOCIATED_TOKEN_PROGRAM_ID.toBase58(),
       TOKEN_PROGRAM_ID.toBase58(),
+      MEMO_PROGRAM_ID.toBase58(),
+      SystemProgram.programId.toBase58(),
     ]);
     expect(DEFAULT_PRIORITY_MICRO_LAMPORTS).toBeGreaterThan(0);
   });
 
   it("omits the priority fee when 0", () => {
     const tx = buildTipTransaction({ from, to, amount: 10, recentBlockhash: blockhash, priorityMicroLamports: 0 });
-    expect(tx.message.compiledInstructions).toHaveLength(2);
+    expect(tx.message.compiledInstructions).toHaveLength(4);
   });
 });

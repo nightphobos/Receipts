@@ -218,6 +218,22 @@ function ranked(rows: LeaderboardRow[]): LeaderboardRow[] {
   return rows;
 }
 
+/**
+ * SKR DAILY "By streak" view: copies of `rows` ranked by streak desc, then bestStreak desc, then z desc
+ * (null last), then wallet asc.
+ */
+export function byStreak(rows: readonly LeaderboardRow[]): LeaderboardRow[] {
+  return [...rows]
+    .sort(
+      (a, b) =>
+        b.streak - a.streak ||
+        (b.bestStreak ?? 0) - (a.bestStreak ?? 0) ||
+        (b.z ?? -Infinity) - (a.z ?? -Infinity) ||
+        (a.wallet < b.wallet ? -1 : a.wallet > b.wallet ? 1 : 0),
+    )
+    .map((r, i) => ({ ...r, rank: i + 1 }));
+}
+
 /** `tips`: tipTotals of the registry txs (src/core/tips.ts); missing = no tips. */
 export function buildLeaderboard(
   entries: readonly WalletEntry[],

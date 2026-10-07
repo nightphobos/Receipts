@@ -11,8 +11,7 @@ import {
   receiptsByWallet,
   walletProfile,
   withPrices,
-  type WalletEntry,
-} from "../leaderboard";
+  type WalletEntry, byStreak, type LeaderboardRow } from "../leaderboard";
 import { encodeCommitMemoV2, encodeRevealMemoV2 } from "../memo";
 import { horizonClass, type ReceiptV2 } from "../score";
 import { SKR_MINT, tipMemo } from "../tip";
@@ -328,5 +327,17 @@ describe("walletProfile — SKR integration v2", () => {
     });
     expect(p.eligibility.skrHolder).toBe(true);
     expect(walletProfile("W", [], true, NOW)).toMatchObject({ skrHolder: false, tips: { tipsSkr: 0, tippers: 0, tipsCount: 0 } });
+  });
+});
+
+describe("byStreak", () => {
+  const r = (wallet: string, streak: number, bestStreak: number, z: number | null): LeaderboardRow => ({
+    rank: 0, wallet, z, n: 1, hits: 1, misses: 0, hitRate: 1, forfeited: 0, overlaps: 0, voids: 0, days: 1, streak, bestStreak, tipsSkr: 0,
+  });
+  it("ranks SKR Daily rows by streak, then best streak, then z, then wallet; input untouched", () => {
+    const rows = [r("d", 2, 5, 1), r("a", 4, 4, 0.5), r("c", 2, 5, 2), r("b", 2, 7, null), r("e", 2, 5, 2)];
+    const out = byStreak(rows);
+    expect(out.map((x) => [x.rank, x.wallet])).toEqual([[1, "a"], [2, "b"], [3, "c"], [4, "e"], [5, "d"]]);
+    expect(rows[0].rank).toBe(0);
   });
 });

@@ -1,6 +1,8 @@
 import { utf8ToBytes } from "@noble/hashes/utils";
 import { buildReceiptsV2 } from "../history";
 import { computeLeaderboard } from "../leaderboardSource";
+import { skrDailyStreak } from "../leaderboard";
+import { SKR_MINT, isSkrHolder, parseTipMemo } from "../tip";
 import { decodeMemoV2 } from "../memo";
 import { refTimeForCommit } from "../price";
 import { eligibility, statsV2, statusOfV2, streak, type ReceiptV2, type StatusV2 } from "../score";
@@ -13,6 +15,8 @@ import {
   demoMaster,
   demoPrice,
   demoPriceSource,
+  demoSkrBalance,
+  demoTipTx,
   demoShareText,
   demoSignMessage,
   isDemoSignature,
@@ -52,6 +56,22 @@ describe("demo wallets and signatures", () => {
   });
 });
 
+describe("demo SKR", () => {
+  it("balances: you and a Genesis-less wallet hold enough SKR, another does not, real wallets 0", () => {
+    expect(isSkrHolder(demoSkrBalance(DEMO_YOU))).toBe(true);
+    const noGenesis = DEMO_OTHERS.filter((w) => !demoHasGenesis(w));
+    expect(noGenesis.map((w) => isSkrHolder(demoSkrBalance(w))).sort()).toEqual([false, true]);
+    expect(demoSkrBalance("9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM")).toBe(0);
+  });
+  it("demoTipTx is a tagged tip memo tx with the transfer attached", () => {
+    const t = demoTipTx(DEMO_YOU, DEMO_OTHERS[0], 50, 1791331200);
+    expect(t).toMatchObject({ signer: DEMO_YOU, tagged: true, failed: false, blockTime: 1791331200 });
+    expect(parseTipMemo(t.memo)).toBe(DEMO_OTHERS[0]);
+    expect(t.tip).toEqual({ mint: SKR_MINT, from: DEMO_YOU, to: DEMO_OTHERS[0], amount: 50 });
+    expect(isDemoSignature(t.signature)).toBe(true);
+  });
+});
+
 describe("demo prices", () => {
   it("are deterministic, per minute, in plausible ranges", () => {
     expect(demoPrice("SOL", 1791331200)).toBe(demoPrice("SOL", 1791331259));
@@ -80,8 +100,25 @@ describe.each(ANCHORS)("seed at anchor %i", (now) => {
       expect(isDemoSignature(t.signature)).toBe(true);
       expect(isDemoWallet(t.signer)).toBe(true);
       expect(t.blockTime).toBeLessThanOrEqual(now);
-      expect(decodeMemoV2(t.memo)).not.toBeNull();
+      expect(decodeMemoV2(t.memo) ?? parseTipMemo(t.memo)).not.toBeNull();
     }
+  });
+
+  it("holds SKR tips between demo wallets, some to you", () => {
+    const tips = txs.filter((t) => parseTipMemo(t.memo));
+    expect(tips.length).toBeGreaterThanOrEqual(5);
+    for (const t of tips) {
+      expect(t.tip?.mint).toBe(SKR_MINT);
+      expect(t.tip?.from).toBe(t.signer);
+      expect(t.tip?.to).toBe(parseTipMemo(t.memo));
+      expect(t.tip?.to).not.toBe(t.signer);
+    }
+    expect(tips.some((t) => t.tip?.to === DEMO_YOU)).toBe(true);
+  });
+
+  it("your SKR Daily streak is at least 3", () => {
+    const mine = buildReceiptsV2(txs, DEMO_YOU);
+    expect(skrDailyStreak(mine, now)).toBeGreaterThanOrEqual(3);
   });
 
   it("your record shows every status, is eligible and beats the coin", () => {
@@ -108,10 +145,15 @@ describe.each(ANCHORS)("seed at anchor %i", (now) => {
       nowSec: now,
       price: async (asset, ts) => (ts > now ? null : demoPrice(asset, ts)),
       hasGenesis: async (w) => demoHasGenesis(w),
+      skrBalance: async (w) => demoSkrBalance(w),
     });
     expect(leaderboard.overall.length).toBeGreaterThanOrEqual(5);
     expect(leaderboard.overall.some((r) => r.wallet === DEMO_YOU)).toBe(true);
     expect(leaderboard.overall.length).toBeLessThan(1 + DEMO_OTHERS.length); // some are ineligible
     expect(leaderboard.skrDaily.length).toBeGreaterThanOrEqual(3);
+    expect(leaderboard.skrDaily.find((r) => r.wallet === DEMO_YOU)?.streak).toBeGreaterThanOrEqual(3);
+    expect(leaderboard.appreciated.length).toBeGreaterThanOrEqual(3);
+    expect(leaderboard.appreciated.some((r) => r.wallet === DEMO_YOU)).toBe(true);
+    expect(leaderboard.overall.find((r) => r.wallet === DEMO_YOU)?.tipsSkr).toBeGreaterThan(0);
   });
 });

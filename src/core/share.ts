@@ -1,4 +1,5 @@
 /** Profile "Copy share text". Pure TS: no RN/Expo imports. */
+import { isSkrDaily, skrDailyStreak } from "./leaderboard";
 import { describeCall, formatUsd, solscanTxUrl } from "./format";
 import { formatChangePct, formatZ } from "./ceremony";
 import { stats, statsV2, statusOf, statusOfV2, type OutcomeV2, type Receipt, type ReceiptV2, type Status } from "./score";
@@ -127,5 +128,6 @@ export function resultShareText(
     `Actual: $${formatUsd(pt)} (${formatChangePct(p0, pt)})`,
     `Record: ${s.hits}/${s.n} · ${s.misses} misses, undeletable · ${formatZ(s.z)}`,
     `Verify: ${solscanTxUrl(r.commit.signature, cluster)}`,
+    ...(isSkrDaily(r) ? [`🔥 SKR Daily streak: ${skrDailyStreak(all, nowSec)}`] : []),
   ].join("\n");
 }

@@ -12,7 +12,10 @@ import type { ProfileReceipt } from "../core/leaderboard";
 import { LEADERBOARD_MIN_DAYS, LEADERBOARD_MIN_N } from "../core/score";
 import { formatHitRate, formatUtcDayTime } from "../core/share";
 import { useWalletProfile } from "../hooks/useLeaderboard";
-import { TIP_AMOUNTS, canTip } from "../core/tip";
+import { SKR_GATE_MIN, TIP_AMOUNTS, canTip } from "../core/tip";
+import { tippedLine } from "../core/tips";
+import { isDemoActive } from "../demo/store";
+import { SeekerBadge, SkrHolderBadge } from "../components/receipt/seeker-badge";
 import { isUserRejection } from "../chain/seal";
 import { buildTipTransaction } from "../chain/tipTx";
 import { ClusterNetwork, useCluster } from "../components/cluster/cluster-data-access";
@@ -22,7 +25,7 @@ import { useMobileWallet } from "../utils/useMobileWallet";
 import { useConnection } from "../utils/ConnectionProvider";
 import { alertAndLog } from "../utils/alertAndLog";
 import type { RootStackParamList } from "../navigators/AppNavigator";
-import { Loading, PixelButton, PixelPanel, StatusStamp, colors, fonts, space, useParallaxScroll } from "../theme";
+import { Loading, PixelButton, PixelIcon, PixelPanel, StatusStamp, colors, fonts, space, useParallaxScroll } from "../theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "WalletProfile">;
 
@@ -70,7 +73,7 @@ function TipPanel({ recipient }: { recipient: string }) {
         });
         const sig = await wallet.signAndSendTransaction(tx, context.slot);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        showToast(`Tipped ${amount} SKR`);
+        showToast(isDemoActive() ? `Demo: simulated tip of ${amount} SKR — nothing was sent` : `Tipped ${amount} SKR`);
         console.log(`tip ${amount} SKR → ${recipient}: ${sig}`);
       } catch (e) {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -120,6 +123,12 @@ export function WalletProfileScreen({ route }: Props) {
   const header = (
     <View style={styles.header}>
       <Text selectable style={styles.wallet}>{wallet}</Text>
+      {p && (p.hasGenesis || p.skrHolder) && (
+        <View style={styles.row}>
+          {p.hasGenesis && <SeekerBadge />}
+          {p.skrHolder && <SkrHolderBadge />}
+        </View>
+      )}
       <TipPanel recipient={wallet} />
       {p && (
         <PixelPanel>
@@ -130,11 +139,23 @@ export function WalletProfileScreen({ route }: Props) {
           <Text style={styles.text}>{`hidden & forfeited: ${p.stats.forfeited}`}</Text>
           {p.stats.overlaps > 0 && <Text style={styles.text}>{`overlapping calls: ${p.stats.overlaps}`}</Text>}
           <Text style={styles.text}>{`streak: ${p.streak} day${p.streak === 1 ? "" : "s"}`}</Text>
+          <View style={styles.row}>
+            <PixelIcon name="flame" scale={1.5} color={colors.accent} />
+            <Text style={styles.text}>
+              {`SKR Daily streak: ${p.skrDailyStreak} day${p.skrDailyStreak === 1 ? "" : "s"} · best ${p.bestSkrDailyStreak}`}
+            </Text>
+          </View>
+          {tippedLine(p.tips) && (
+            <View style={styles.row}>
+              <PixelIcon name="coin" scale={1.5} color={colors.accent} />
+              <Text style={styles.text}>{tippedLine(p.tips)}</Text>
+            </View>
+          )}
           <Text style={styles.muted}>
             {`All calls incl. 1h practice: N ${p.stats.n} · ${formatSigma(p.stats.z)} · void ${p.stats.voids} · pending ${p.stats.pending}`}
           </Text>
           <Text style={styles.muted}>
-            {`${p.eligibility.eligible ? "Eligible" : "Not eligible yet"} · ${p.eligibility.n}/${LEADERBOARD_MIN_N} calls · ${p.eligibility.days}/${LEADERBOARD_MIN_DAYS} days · Genesis ${p.hasGenesis ? "✓" : "✕"}`}
+            {`${p.eligibility.eligible ? "Eligible" : "Not eligible yet"} · ${p.eligibility.n}/${LEADERBOARD_MIN_N} calls · ${p.eligibility.days}/${LEADERBOARD_MIN_DAYS} days · Genesis ${p.hasGenesis ? "✓" : "✕"} or SKR ≥ ${SKR_GATE_MIN} ${p.skrHolder ? "✓" : "✕"}`}
           </Text>
         </PixelPanel>
       )}
@@ -196,5 +217,6 @@ const styles = StyleSheet.create({
   muted: { fontFamily: fonts.body, color: colors.textMuted, fontSize: 12 },
   flex: { flex: 1 },
   tipRow: { flexDirection: "row", gap: space.sm, marginTop: space.sm },
+  row: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: space.sm },
   gap: { marginTop: space.lg },
 });

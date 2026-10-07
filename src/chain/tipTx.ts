@@ -9,20 +9,32 @@ import {
   createTransferCheckedInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { SKR_DECIMALS, SKR_MINT, skrToBaseUnits } from "../core/tip";
-import { DEFAULT_PRIORITY_MICRO_LAMPORTS, priorityFeeInstruction } from "./memoTx";
+import { SKR_DECIMALS, SKR_MINT, skrToBaseUnits, tipMemo } from "../core/tip";
+import {
+  DEFAULT_PRIORITY_MICRO_LAMPORTS,
+  memoInstruction,
+  priorityFeeInstruction,
+  registryTagInstruction,
+} from "./memoTx";
 
 export const SKR_MINT_KEY = new PublicKey(SKR_MINT);
 
-/** [create recipient ATA (idempotent, paid by tipper), transferChecked `amount` SKR from→to]. */
+/**
+ * [create recipient ATA (idempotent, paid by tipper), transferChecked `amount` SKR from→to,
+ * memo `rcpt:2:t:<to>`, 0-lamport registry tag] — the last two make the tip discoverable via the registry.
+ */
 export function tipInstructions(from: PublicKey, to: PublicKey, amount: number): TransactionInstruction[] {
   if (from.equals(to)) throw new Error("cannot tip yourself");
   const units = skrToBaseUnits(amount);
-  const fromAta = getAssociatedTokenAddressSync(SKR_MINT_KEY, from);
-  const toAta = getAssociatedTokenAddressSync(SKR_MINT_KEY, to);
+  // allowOwnerOffCurve: the ATA address is the same; only the client-side curve check is skipped
+  // (demo wallets are vanity keys, some of them off-curve).
+  const fromAta = getAssociatedTokenAddressSync(SKR_MINT_KEY, from, true);
+  const toAta = getAssociatedTokenAddressSync(SKR_MINT_KEY, to, true);
   return [
     createAssociatedTokenAccountIdempotentInstruction(from, toAta, to, SKR_MINT_KEY),
     createTransferCheckedInstruction(fromAta, SKR_MINT_KEY, toAta, from, units, SKR_DECIMALS),
+    memoInstruction(from, tipMemo(to.toBase58())),
+    registryTagInstruction(from),
   ];
 }
 

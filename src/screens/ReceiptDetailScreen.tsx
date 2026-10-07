@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { describeCall, formatCountdown, formatUsd, solscanTxUrl } from "../core/format";
-import { isDemo } from "../core/price";
+import { SOURCE_LABEL, isDemo, type PriceSourceKind } from "../core/price";
 import { REVEAL_GRACE_SEC, statusOf, type Status } from "../core/score";
 import { canReveal, revealReceipt } from "../chain/reveal";
 import { isUserRejection } from "../chain/seal";
@@ -42,7 +42,8 @@ function TxLink({ label, signature, cluster }: { label: string; signature: strin
   );
 }
 
-function Resolution({ row, status, now, demo }: { row: ReceiptRow; status: Status; now: number; demo: boolean }) {
+function Resolution({ row, status, now, src }: { row: ReceiptRow; status: Status; now: number; src: PriceSourceKind }) {
+  const { name, quote } = SOURCE_LABEL[src];
   const { receipt } = row;
   switch (status) {
     case "sealed":
@@ -62,7 +63,7 @@ function Resolution({ row, status, now, demo }: { row: ReceiptRow; status: Statu
         <Text variant="bodyLarge">
           {now < receipt.deadline
             ? `Revealed early. Resolves after the deadline (${formatCountdown(receipt.deadline - now)}).`
-            : `${demo ? "Demo" : "Pyth"} price at the deadline is not available yet.`}
+            : `${name} price at the deadline is not available yet.`}
         </Text>
       );
     case "hit":
@@ -71,7 +72,7 @@ function Resolution({ row, status, now, demo }: { row: ReceiptRow; status: Statu
       const price = receipt.priceAtDeadline as number;
       return (
         <Text variant="bodyLarge">
-          {`${demo ? "Demo price" : "Pyth"} ${call.asset}/USD at deadline: $${formatUsd(price)} — ${call.dir} $${formatUsd(call.target)}: ${
+          {`${name} ${call.asset}/${quote} at deadline: ${formatUsd(price)} — ${call.dir} $${formatUsd(call.target)}: ${
             status === "hit" ? "HIT" : "MISS"
           }`}
         </Text>
@@ -167,6 +168,7 @@ export function ReceiptDetailScreen({ route }: Props) {
   const status = statusOf(receipt, now);
   const pendingReveal = sentReveal !== null && !receipt.reveal;
   const demo = call !== null && isDemo(priceSource, call.asset);
+  const src: PriceSourceKind = call !== null ? priceSource.kindOf(call.asset) : "pyth";
 
   return (
     <ScrollView contentContainerStyle={styles.screenContainer} refreshControl={refresh}>
@@ -190,7 +192,7 @@ export function ReceiptDetailScreen({ route }: Props) {
 
       <Card style={styles.gap}>
         <Card.Content>
-          <Resolution row={row} status={status} now={now} demo={demo} />
+          <Resolution row={row} status={status} now={now} src={src} />
         </Card.Content>
         {status === "unresolved" && (
           <Card.Actions>

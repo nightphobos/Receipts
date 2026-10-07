@@ -110,10 +110,16 @@ describe("pythSource", () => {
 describe("selectPriceSource", () => {
   const { fn, reqs } = fakeFetch(404, {});
 
-  it("defaults to mock when no api key is set", () => {
-    expect(selectPriceSource({}, fn, now).kind).toBe("mock");
-    expect(selectPriceSource({ EXPO_PUBLIC_PYTH_API_KEY: "" }, fn, now).kind).toBe("mock");
-    expect(selectPriceSource({ EXPO_PUBLIC_PYTH_API_KEY: "   " }, fn, now).kind).toBe("mock");
+  it("never falls back to demo silently: no key → SOL stays Pyth (fails loudly), SKR on KuCoin", async () => {
+    for (const env of [{}, { EXPO_PUBLIC_PYTH_API_KEY: "" }, { EXPO_PUBLIC_PYTH_API_KEY: "   " }]) {
+      const s = selectPriceSource(env, fn, now);
+      expect(s.kindOf("SOL")).toBe("pyth");
+      expect(s.kindOf("SKR")).toBe("kucoin");
+      expect(isDemo(s, "SOL")).toBe(false);
+    }
+    reqs.length = 0;
+    await selectPriceSource({}, fn, now).at("SOL", NOW).catch(() => null);
+    expect(reqs[0].headers.Authorization).toBeUndefined();
   });
 
   it("uses mock when forced even with a key", () => {
@@ -122,15 +128,20 @@ describe("selectPriceSource", () => {
     expect(isDemo(s, "SOL")).toBe(true);
   });
 
-  it("uses pyth when a key is set and not forced to mock", async () => {
+  it("with a key: SOL → Pyth (bearer), SKR → KuCoin (no auth header)", async () => {
     const s = selectPriceSource({ EXPO_PUBLIC_PYTH_API_KEY: "k" }, fn, now);
     expect(s.kind).toBe("pyth");
     expect(s.kindOf("SOL")).toBe("pyth");
-    expect(s.kindOf("SKR")).toBe("pyth");
+    expect(s.kindOf("SKR")).toBe("kucoin");
+    expect(isDemo(s, "SKR")).toBe(false);
     reqs.length = 0;
-    await s.at("SKR", NOW);
+    await s.at("SOL", NOW).catch(() => null);
     expect(reqs).toHaveLength(1);
     expect(reqs[0].headers.Authorization).toBe("Bearer k");
+    reqs.length = 0;
+    await s.latest("SKR").catch(() => null);
+    expect(reqs).toHaveLength(1);
+    expect(reqs[0].url).toContain("api.kucoin.com");
   });
 
   it("falls back to mock per asset when its feed id is null", async () => {

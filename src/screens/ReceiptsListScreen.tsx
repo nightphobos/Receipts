@@ -6,7 +6,7 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { describeCall, formatCountdown, formatUsd } from "../core/format";
-import { isDemo } from "../core/price";
+import { SOURCE_LABEL, isDemo, type PriceSourceKind } from "../core/price";
 import { REVEAL_GRACE_SEC, statusOf, type Status } from "../core/score";
 import { useReceipts, type ReceiptRow } from "../hooks/useReceipts";
 import { useNowSec } from "../hooks/useNow";
@@ -23,7 +23,8 @@ type Nav = CompositeNavigationProp<
   NativeStackNavigationProp<RootStackParamList>
 >;
 
-function statusLine(row: ReceiptRow, status: Status, now: number, demo: boolean): string {
+function statusLine(row: ReceiptRow, status: Status, now: number, src: PriceSourceKind): string {
+  const { name, quote } = SOURCE_LABEL[src];
   const { receipt } = row;
   switch (status) {
     case "sealed":
@@ -37,10 +38,10 @@ function statusLine(row: ReceiptRow, status: Status, now: number, demo: boolean)
     case "unresolved":
       return now < receipt.deadline
         ? "Revealed early — waiting for deadline"
-        : `Waiting for ${demo ? "demo" : "Pyth"} price`;
+        : `Waiting for ${name} price`;
     case "hit":
     case "miss":
-      return `${demo ? "Demo price" : "Pyth"} at deadline: $${formatUsd(receipt.priceAtDeadline as number)}`;
+      return `${name} at deadline: ${formatUsd(receipt.priceAtDeadline as number)} ${quote}`;
   }
 }
 
@@ -48,6 +49,7 @@ function ReceiptItem({ row, now, onPress }: { row: ReceiptRow; now: number; onPr
   const status = statusOf(row.receipt, now);
   const priceSource = usePriceSource();
   const demo = row.call !== null && isDemo(priceSource, row.call.asset);
+  const src: PriceSourceKind = row.call !== null ? priceSource.kindOf(row.call.asset) : "pyth";
   return (
     <Card style={styles.card} onPress={onPress}>
       <Card.Content>
@@ -62,7 +64,7 @@ function ReceiptItem({ row, now, onPress }: { row: ReceiptRow; now: number; onPr
             <DemoBadge />
           </View>
         )}
-        <Text variant="bodyMedium" style={styles.gapSmall}>{statusLine(row, status, now, demo)}</Text>
+        <Text variant="bodyMedium" style={styles.gapSmall}>{statusLine(row, status, now, src)}</Text>
         <Text variant="bodySmall" style={styles.muted}>
           {`Deadline ${new Date(row.receipt.deadline * 1000).toLocaleString()}`}
         </Text>

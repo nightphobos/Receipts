@@ -1,14 +1,25 @@
 /**
- * Price sources: real Pyth Hermes or deterministic demo prices.
+ * Price sources: Pyth Hermes (SOL), KuCoin spot (SKR), or deterministic demo prices.
  * Pure TS: no RN/Expo imports; fetch, clock and env are injected.
  */
 import { ASSETS, type Asset } from "./call";
+import { fetchKucoinAt, fetchKucoinLatest } from "./kucoin";
 import { FEED_IDS, fetchLatestPrice, fetchPriceAt, type FetchFn, type PythOptions, type PythPrice } from "./pyth";
 
-export type PriceSourceKind = "pyth" | "mock";
+export type PriceSourceKind = "pyth" | "kucoin" | "mock";
+
+/** Fixed per-asset resolution source (part of the scoring rules — do not switch silently). */
+export const RESOLUTION_SOURCE: Record<Asset, Exclude<PriceSourceKind, "mock">> = { SOL: "pyth", SKR: "kucoin" };
+
+/** Human label and quote currency per source, for UI text. */
+export const SOURCE_LABEL: Record<PriceSourceKind, { name: string; quote: string }> = {
+  pyth: { name: "Pyth", quote: "USD" },
+  kucoin: { name: "KuCoin", quote: "USDT" },
+  mock: { name: "Demo", quote: "USD" },
+};
 
 export interface PriceSource {
-  /** "mock" if ANY asset is served by demo prices (conservative, for global badges). */
+  /** "mock" if ANY asset is served by demo prices (conservative, for global badges); else the first asset's source. */
   kind: PriceSourceKind;
   /** Which source actually serves this asset — drives the per-asset DEMO PRICES badge. */
   kindOf(asset: Asset): PriceSourceKind;
@@ -26,6 +37,15 @@ export function pythSource(fetchFn: FetchFn, opts: PythOptions = {}): PriceSourc
     kindOf: () => "pyth",
     latest: (asset) => fetchLatestPrice(asset, fetchFn, opts),
     at: (asset, ts) => fetchPriceAt(asset, ts, fetchFn, opts),
+  };
+}
+
+export function kucoinSource(fetchFn: FetchFn, nowFn: () => number): PriceSource {
+  return {
+    kind: "kucoin",
+    kindOf: () => "kucoin",
+    latest: (asset) => fetchKucoinLatest(asset, fetchFn),
+    at: (asset, ts) => fetchKucoinAt(asset, ts, fetchFn, nowFn()),
   };
 }
 
@@ -56,10 +76,6 @@ export interface PriceEnv {
   EXPO_PUBLIC_PRICE_SOURCE?: string;
 }
 
-/**
- * Mock unless a Pyth key is set and EXPO_PUBLIC_PRICE_SOURCE !== "mock".
- * Assets without a Pyth feed id fall back to mock individually.
- */
 /** Null out feed ids for assets listed in a CSV (e.g. "SKR"), forcing them onto the demo source. */
 export function withMockedAssets(
   feedIds: Record<Asset, string | null>,
@@ -71,6 +87,12 @@ export function withMockedAssets(
   return out;
 }
 
+/**
+ * Per asset: its RESOLUTION_SOURCE (SOL → Pyth, SKR → KuCoin).
+ * Demo prices only when explicitly asked: EXPO_PUBLIC_PRICE_SOURCE=mock (all assets),
+ * or the asset's feed id was nulled via withMockedAssets. A Pyth asset without a key
+ * stays on Pyth and fails loudly (shown as "unavailable") rather than silently switching source.
+ */
 export function selectPriceSource(
   env: PriceEnv,
   fetchFn: FetchFn,
@@ -78,12 +100,14 @@ export function selectPriceSource(
   feedIds: Record<Asset, string | null> = FEED_IDS,
 ): PriceSource {
   const mock = mockSource(nowFn);
-  const apiKey = env.EXPO_PUBLIC_PYTH_API_KEY?.trim();
-  if (!apiKey || env.EXPO_PUBLIC_PRICE_SOURCE?.trim() === "mock") return mock;
+  if (env.EXPO_PUBLIC_PRICE_SOURCE?.trim() === "mock") return mock;
+  const apiKey = env.EXPO_PUBLIC_PYTH_API_KEY?.trim() || undefined;
   const pyth = pythSource(fetchFn, { apiKey });
-  const pick = (asset: Asset) => (feedIds[asset] ? pyth : mock);
+  const kucoin = kucoinSource(fetchFn, nowFn);
+  const pick = (asset: Asset): PriceSource =>
+    feedIds[asset] === null ? mock : RESOLUTION_SOURCE[asset] === "kucoin" ? kucoin : pyth;
   return {
-    kind: ASSETS.every((a) => feedIds[a]) ? "pyth" : "mock",
+    kind: ASSETS.some((a) => pick(a).kind === "mock") ? "mock" : pick(ASSETS[0]).kind,
     kindOf: (asset) => pick(asset).kind,
     latest: (asset) => pick(asset).latest(asset),
     at: (asset, ts) => pick(asset).at(asset, ts),

@@ -2,10 +2,10 @@
 
 A Solana Mobile (Seeker) app for crypto price calls that **can't be cleaned up afterwards**.
 
-You make a call ("SOL above $200 by Oct 7, 00:00 UTC"). The app seals it on Solana as a hash right away and keeps the call text secret. After the deadline you reveal it, and the app scores it against the Pyth price at the deadline. **If you never reveal a call, it counts as a miss.** You can't delete misses, edit calls, or show only the wins. The hit-rate comes straight from your wallet's on-chain history.
+You make a call ("SOL above $200 by Oct 7, 00:00 UTC"). The app seals it on Solana as a hash right away and keeps the call text secret. After the deadline you reveal it, and the app scores it against the market price at the deadline (SOL: Pyth SOL/USD, SKR: KuCoin SKR-USDT). **If you never reveal a call, it counts as a miss.** You can't delete misses, edit calls, or show only the wins. The hit-rate comes straight from your wallet's on-chain history.
 
 - No custom program and no token transfers. Each step is one [SPL Memo](https://spl.solana.com/memo) transaction (`MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`).
-- No backend. The app reads everything from the Solana RPC and Pyth Hermes.
+- No backend. The app reads everything from the Solana RPC, Pyth Hermes (SOL) and KuCoin's public market API (SKR).
 - Assets: **SOL** and **SKR** (the Seeker token).
 
 ## How it works
@@ -72,7 +72,7 @@ reveal memo: rcpt:1:r:98056fab472b8e716e2d57f1cbf758f5a1c7198faab58acec5bd4ee8b3
    ```
    The result must equal the hash in **both** memos.
 6. **Check the deadline.** The `deadline` in the JSON must equal the last field of the commit memo (`1791331200` = 2026-10-07 00:00 UTC).
-7. **Score it.** Look up the Pyth `Crypto.<ASSET>/USD` price at the deadline, for example with `GET https://hermes.pyth.network/v2/updates/price/1791331200?ids[]=<feed id>&parsed=true` (now requires an API key), or with any Pyth price chart. Then apply the strict hit rule.
+7. **Score it.** For **SKR**, take the close of the KuCoin `SKR-USDT` 1-minute candle that ends at `floor(deadline/60)*60`: `GET https://api.kucoin.com/api/v1/market/candles?type=1min&symbol=SKR-USDT&startAt=<end-60>&endAt=<end>` (public, no key; row = `[start, open, close, high, low, volume, turnover]`). For **SOL**, look up the Pyth `Crypto.SOL/USD` price at the deadline, for example with `GET https://hermes.pyth.network/v2/updates/price/1791331200?ids[]=<feed id>&parsed=true` (now requires an API key), or with any Pyth price chart. Then apply the strict hit rule.
 
 If no valid reveal exists for a commit and deadline + 24 h has passed, count it as a **miss**.
 
@@ -115,7 +115,8 @@ Expo inlines `EXPO_PUBLIC_*` variables **when it bundles the app**, so rebuild t
 # .env
 EXPO_PUBLIC_CLUSTER=mainnet-beta                        # or devnet (default: mainnet-beta)
 EXPO_PUBLIC_RPC_URL=https://api.mainnet-beta.solana.com # default
-EXPO_PUBLIC_PYTH_API_KEY=<your Pyth Hermes token>       # unset → demo prices
+EXPO_PUBLIC_PYTH_API_KEY=<your Pyth Hermes token>       # needed for SOL prices
+EXPO_PUBLIC_MOCK_ASSETS=                                # e.g. SKR → demo prices for that asset only
 EXPO_PUBLIC_PRICE_SOURCE=                               # "mock" forces demo prices even with a key
 ```
 
@@ -129,7 +130,8 @@ src/core/      pure TypeScript, no React Native/Expo imports, all I/O injected (
   history.ts     on-chain memo txs → receipts (same signer, hash, deadline, reveal window)
   score.ts       statusOf, resolve (strict compare), stats
   pyth.ts        Hermes client + pinned feed ids (SOL, SKR)
-  price.ts       PriceSource: pyth | deterministic mock, selectPriceSource
+  kucoin.ts      KuCoin public spot client (SKR): level1 + 1-min candle close
+  price.ts       PriceSource: pyth | kucoin | deterministic mock; RESOLUTION_SOURCE (SOL→pyth, SKR→kucoin)
   share.ts, format.ts, draft.ts, cluster.ts
 src/chain/     memoTx.ts (Memo + priority-fee tx), fetchHistory.ts (signatures → parsed txs → rcpt memos),
                seal.ts, reveal.ts (MWA sign & send)
@@ -142,11 +144,8 @@ The app is built from the Solana Mobile Expo template (Expo 52, React Native 0.7
 
 ## Known limitations
 
-- **Demo prices until a Pyth API key is set.**
-  - Since 2026-08-26 Pyth Hermes price endpoints return `401` without a key.
-  - Without `EXPO_PUBLIC_PYTH_API_KEY`, the app uses deterministic **mock prices**: SOL around $150 and SKR around $0.05, following a fixed sine formula.
-  - In that mode, every price, HIT and MISS shows a yellow **DEMO PRICES** badge, and the share text starts with `[DEMO PRICES — not real results]`.
-  - To switch to real prices, put the key in `.env` (see above) and rebuild the APK.
+- **Price sources are fixed per asset** (part of the scoring rules): SOL → Pyth `Crypto.SOL/USD` (needs `EXPO_PUBLIC_PYTH_API_KEY`; Hermes returns `401` without one since 2026-08-26), SKR → KuCoin `SKR-USDT` 1-minute candle close (Pyth has a `Crypto.SKR/USD` feed id, but Hermes does not serve it for our key). SKR is quoted in USDT, not USD.
+  - The app never switches to demo prices on its own. Demo prices only with `EXPO_PUBLIC_PRICE_SOURCE=mock` or `EXPO_PUBLIC_MOCK_ASSETS`, and then every price, HIT and MISS shows a **DEMO PRICES** badge and the share text starts with `[DEMO PRICES — not real results]`.
 - **Secrets are only on the phone.**
   - The call and salt live in AsyncStorage on the device.
   - If you uninstall the app or lose the phone before revealing, the call can't be revealed and will be forfeited. This is by design: it can't be undone.

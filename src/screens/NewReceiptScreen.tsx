@@ -10,7 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ASSETS, type Asset, type Direction } from "../core/call";
 import { DEADLINE_PRESETS, draftCall, parseCustomHours } from "../core/draft";
 import { formatUsd } from "../core/format";
-import { isDemo } from "../core/price";
+import { SOURCE_LABEL, isDemo, type PriceSourceKind } from "../core/price";
 import { RECEIPTS_QUERY_KEY } from "../hooks/useReceipts";
 import { usePriceSource } from "../hooks/usePriceSource";
 import { DemoBadge } from "../components/receipt/demo-badge";
@@ -70,7 +70,7 @@ export function NewReceiptScreen() {
 
   const priceSource = usePriceSource();
   const demo = isDemo(priceSource, asset);
-  const priceName = demo ? "demo" : "Pyth";
+  const { name: priceName, quote } = SOURCE_LABEL[priceSource.kindOf(asset)];
   const price = useLatestPrice(asset);
   const durationSec = preset === CUSTOM ? parseCustomHours(customHours) : Number(preset);
   const nowSec = Math.floor(Date.now() / 1000);
@@ -147,7 +147,7 @@ export function NewReceiptScreen() {
           {price.isLoading
             ? `Loading ${priceName} price…`
             : price.data
-              ? `${demo ? "Demo price" : "Pyth"} now: $${formatUsd(price.data.price)}`
+              ? `${priceName} ${asset}/${quote} now: ${formatUsd(price.data.price)}`
               : `${priceName} price unavailable`}
         </HelperText>
         {demo && <DemoBadge />}

@@ -25,7 +25,8 @@ import { useConnection } from "../utils/ConnectionProvider";
 import { ConnectButton } from "../components/sign-in/sign-in-ui";
 import { alertAndLog } from "../utils/alertAndLog";
 import { showToast } from "../components/ui/toast";
-import { useParallaxScroll } from "../theme";
+import { MascotDialog, useParallaxScroll } from "../theme";
+import { mascotLine } from "../core/mascot";
 
 const WARNED_KEY = "rcpt:warned-local-secrets";
 
@@ -162,6 +163,8 @@ export function NewReceiptScreen() {
         result.call,
       );
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Let Chekko finish chewing before leaving the screen.
+      await new Promise((r) => setTimeout(r, 700));
       setDir(null);
       queryClient.invalidateQueries({ queryKey: [RECEIPTS_QUERY_KEY] });
       navigation.navigate("ReceiptDetail", { hash, signature });
@@ -193,6 +196,11 @@ export function NewReceiptScreen() {
   return (
     <ScrollView {...parallaxScroll} contentContainerStyle={styles.screenContainer}>
       <Text variant="titleLarge">Seal a call</Text>
+      <MascotDialog
+        style={styles.gap}
+        pose={sealing ? "eat" : "idle"}
+        text={mascotLine(sealing ? "eat" : "idle", { asset, horizon })}
+      />
       {!masterKey.isLoading && (
         <MasterKeyCard state={masterKey.state} onSetup={setupMaster} busy={settingUp} />
       )}

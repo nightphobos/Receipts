@@ -22,7 +22,8 @@ import { useMobileWallet } from "../utils/useMobileWallet";
 import { useConnection } from "../utils/ConnectionProvider";
 import { alertAndLog } from "../utils/alertAndLog";
 import { showToast } from "../components/ui/toast";
-import { useParallaxScroll } from "../theme";
+import { MascotDialog, useParallaxScroll } from "../theme";
+import { mascotLine, poseForStatus } from "../core/mascot";
 
 const fmtTime = (sec: number) => new Date(sec * 1000).toLocaleString();
 
@@ -95,6 +96,7 @@ export function ReceiptDetailV2({
   const demo = isDemo(priceSource, receipt.asset);
   const { name: priceName } = SOURCE_LABEL[priceSource.kindOf(receipt.asset)];
   const needsRecovery = !row.hasSecret && !masterKey.master;
+  const pose = poseForStatus(status, { printing: revealing || pendingReveal });
 
   const onReveal = useCallback(async () => {
     if (!selectedAccount) return;
@@ -152,6 +154,9 @@ export function ReceiptDetailV2({
       <Text variant="bodySmall" style={styles.muted}>
         {`Horizon ${receipt.horizon}${receipt.horizon === "1h" ? " (practice)" : ""}`}
       </Text>
+      {pose !== "idle" && (
+        <MascotDialog style={styles.gap} pose={pose} text={mascotLine(pose, receipt)} />
+      )}
       {demo && (
         <View style={styles.gapSmall}>
           <DemoBadge />

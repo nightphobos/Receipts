@@ -44,3 +44,4 @@ dist/receipts-20261007-0004.apk
 [2026-10-07 09:51:10] iter 9/60 · open: 8 · next: T036 App seal/reveal v2: master-key setup via MWA `signMessage` (+ determi
 [2026-10-07 09:58:04] iter 10/60 · open: 11 · next: T044 Theme foundation per spec "Visual style: Night Register": `src/theme/
 [2026-10-07 10:01:59] iter 11/60 · open: 10 · next: T045 Parallax background per spec: `src/core/parallax.ts` (pure, test-firs
+[2026-10-07 10:05:25] iter 12/60 · open: 9 · next: T046 Mascot Chekko (5 poses as pixel rect data) + dialog panel; idle on Ne

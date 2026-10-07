@@ -12,3 +12,4 @@ export { StatusStamp, STAMP_META } from "./StatusStamp";
 export { ReceiptPaper, ReceiptRow, ReceiptDivider, ReceiptTitle } from "./ReceiptPaper";
 export { PixelTabBar } from "./TabBar";
 export { ParallaxBackground, useParallaxScroll } from "./ParallaxBackground";
+export { Mascot, MascotDialog } from "./Mascot";

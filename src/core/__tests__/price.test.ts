@@ -1,3 +1,5 @@
+import { kucoinSource, priceAt, refTimeForCommit } from "../price";
+import candles5 from "./fixtures/kucoin-candles5-skr-2026-10-07.json";
 import { FEED_IDS, type FetchFn } from "../pyth";
 import { MOCK_BASE, isDemo, mockPrice, mockSource, pythSource, selectPriceSource, withMockedAssets } from "../price";
 import latestSol from "./fixtures/hermes-latest-sol.docshape.json";
@@ -185,5 +187,50 @@ describe("withMockedAssets", () => {
     expect(src.kindOf("SOL")).toBe("pyth");
     expect(src.kindOf("SKR")).toBe("mock");
     expect(src.kind).toBe("mock");
+  });
+});
+describe("refTimeForCommit (t0 = ceil_to_minute, +60 on a boundary)", () => {
+  it.each([
+    [1791348000, 1791348060], // exactly on a minute → +60
+    [1791348001, 1791348060],
+    [1791348059, 1791348060],
+    [1791348060, 1791348120],
+  ])("%i → %i", (bt, t0) => expect(refTimeForCommit(bt)).toBe(t0));
+
+  it("rejects non-integer / non-positive blockTime", () => {
+    expect(() => refTimeForCommit(1.5)).toThrow();
+    expect(() => refTimeForCommit(0)).toThrow();
+  });
+});
+
+describe("priceAt(source, asset, ts)", () => {
+  const END = 1791348120;
+
+  it("SKR via KuCoin = median of 5 closes (real fixture)", async () => {
+    const { fn, reqs } = fakeFetch(200, candles5);
+    const s = kucoinSource(fn, () => END + 3600);
+    await expect(priceAt(s, "SKR", END + 30)).resolves.toMatchObject({ price: 0.01646, publishTime: END });
+    expect(reqs[0].url).toContain("startAt=1791347820&endAt=1791348120");
+  });
+
+  it("selected source: SKR → KuCoin median, SOL → Pyth at exact ts", async () => {
+    const { fn, reqs } = fakeFetch(200, candles5);
+    const s = selectPriceSource({ EXPO_PUBLIC_PYTH_API_KEY: "k" }, fn, () => END + 3600);
+    await expect(priceAt(s, "SKR", END)).resolves.toMatchObject({ price: 0.01646 });
+    reqs.length = 0;
+    await priceAt(s, "SOL", END + 7).catch(() => null);
+    expect(reqs[0].url).toContain(`/v2/updates/price/${END + 7}?`);
+  });
+
+  it("null when not resolvable yet; mock is deterministic", async () => {
+    const m = mockSource(() => NOW);
+    await expect(priceAt(m, "SOL", NOW + 1)).resolves.toBeNull();
+    await expect(priceAt(m, "SOL", NOW - 60)).resolves.toMatchObject({ price: mockPrice("SOL", NOW - 60) });
+  });
+
+  it("rejects bad ts before touching the network", async () => {
+    const { fn, reqs } = fakeFetch(200, candles5);
+    await expect(priceAt(kucoinSource(fn, () => 9e9), "SKR", 1.5)).rejects.toThrow();
+    expect(reqs).toHaveLength(0);
   });
 });

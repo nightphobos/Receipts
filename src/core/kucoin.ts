@@ -2,9 +2,10 @@
  * KuCoin public spot market data (no API key). Used for SKR, whose Pyth feed
  * is not served by Hermes for our key. Pure TS: fetch and clock are injected.
  *
- * Resolution rule (fixed, documented in README): the price "at" unix ts is the
- * CLOSE of the 1-minute candle that ends at floor(ts/60)*60 — i.e. the last
- * fully closed minute at the deadline. Quote currency is USDT.
+ * Resolution rule (v2, fixed, documented in README): the price "at" unix ts is the
+ * MEDIAN of the closes of the 5 one-minute candles ending at floor(ts/60)*60
+ * (`fetchKucoinMedian5`). Legacy v1: the single close of that last minute
+ * (`fetchKucoinAt`). Quote currency is USDT.
  */
 import type { Asset } from "./call";
 import type { FetchFn, PythPrice } from "./pyth";
@@ -68,4 +69,38 @@ export async function fetchKucoinAt(asset: Asset, ts: number, fetchFn: FetchFn, 
     fetchFn,
   );
   return parseKucoinCandleClose(data, asset, start);
+}
+
+const MEDIAN_WINDOW = 5;
+
+/**
+ * v2 rule (SKR): median of the closes of the 5 one-minute candles ending at `end`
+ * (rows starting at end−300 … end−60). Rows outside the window and duplicate starts
+ * are ignored; with fewer rows the median of those present (even count → mean of the
+ * middle two); none → null. publishTime = end.
+ */
+export function medianClose(data: unknown, asset: Asset, end: number): PythPrice | null {
+  if (!Array.isArray(data)) return null;
+  const xs: number[] = [];
+  for (let i = 1; i <= MEDIAN_WINDOW; i++) {
+    const p = parseKucoinCandleClose(data, asset, end - 60 * i);
+    if (p) xs.push(p.price);
+  }
+  xs.sort((a, b) => a - b);
+  if (xs.length === 0) return null;
+  const mid = Math.floor(xs.length / 2);
+  const price = xs.length % 2 === 1 ? xs[mid] : (xs[mid - 1] + xs[mid]) / 2;
+  return { asset, price, conf: 0, publishTime: end };
+}
+
+/** v2 price at `ts`: one candles request startAt=end−300&endAt=end, end = floor(ts/60)*60; null until that minute has closed. */
+export async function fetchKucoinMedian5(asset: Asset, ts: number, fetchFn: FetchFn, nowSec: number): Promise<PythPrice | null> {
+  if (!Number.isSafeInteger(ts) || ts <= 0) throw new Error("Timestamp must be a positive whole unix time");
+  const end = Math.floor(ts / 60) * 60;
+  if (nowSec < end + 5) return null;
+  const data = await getJson(
+    `${KUCOIN_URL}/api/v1/market/candles?type=1min&symbol=${KUCOIN_SYMBOLS[asset]}&startAt=${end - 60 * MEDIAN_WINDOW}&endAt=${end}`,
+    fetchFn,
+  );
+  return medianClose(data, asset, end);
 }

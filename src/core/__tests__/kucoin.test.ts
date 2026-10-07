@@ -1,3 +1,5 @@
+import candles5 from "./fixtures/kucoin-candles5-skr-2026-10-07.json";
+import { fetchKucoinMedian5, medianClose } from "../kucoin";
 import level1 from "./fixtures/kucoin-level1-skr-2026-10-07.json";
 import candles from "./fixtures/kucoin-candles-skr-2026-10-07.json";
 import {
@@ -70,5 +72,54 @@ describe("kucoin fetch", () => {
     await expect(fetchKucoinLatest("SKR", fakeFetch({}, 500).fn)).rejects.toThrow("HTTP 500");
     await expect(fetchKucoinLatest("SKR", fakeFetch({ code: "400100" }).fn)).rejects.toThrow("bad response code");
     await expect(fetchKucoinAt("SKR", 1.5, fakeFetch(candles).fn, 9e9)).rejects.toThrow();
+  });
+});
+describe("kucoin median of 5 closes (v2 SKR rule)", () => {
+  const END = 1791348120; // real response: closes .01644 .01646 .01646 .01654 .01654
+
+  it("median of the 5 closes of the candles ending at END (real response)", () => {
+    expect(medianClose(candles5.data, "SKR", END)).toEqual({ asset: "SKR", price: 0.01646, conf: 0, publishTime: END });
+  });
+
+  it("uses CLOSE, ignores rows outside [END-300, END-60] and duplicates", () => {
+    const row = (s: number, close: string) => [String(s), "9", close, "9", "0.1", "0", "0"];
+    const rows = [
+      row(END, "100"), // starts at END → not yet in window
+      row(END - 360, "100"), // too early
+      row(END - 60, "5"),
+      row(END - 60, "5"),
+      row(END - 120, "1"),
+      row(END - 180, "4"),
+      row(END - 240, "2"),
+      row(END - 300, "3"),
+    ];
+    expect(medianClose(rows, "SOL", END)?.price).toBe(3);
+  });
+
+  it("fewer rows: median of what exists (even count → mean of middle two); none → null", () => {
+    const row = (s: number, close: string) => [String(s), "0", close, "0", "0", "0", "0"];
+    expect(medianClose([row(END - 60, "2"), row(END - 120, "4")], "SKR", END)?.price).toBe(3);
+    expect(medianClose([row(END - 60, "7")], "SKR", END)?.price).toBe(7);
+    expect(medianClose([], "SKR", END)).toBeNull();
+    expect(medianClose([row(END - 60, "x")], "SKR", END)).toBeNull();
+    expect(medianClose({}, "SKR", END)).toBeNull();
+  });
+
+  it("one request startAt=end-300&endAt=end with end = floor(ts/60)*60", async () => {
+    const f = fakeFetch(candles5);
+    const p = await fetchKucoinMedian5("SKR", END + 59, f.fn, END + 3600);
+    expect(p?.price).toBe(0.01646);
+    expect(f.calls).toEqual([
+      "https://api.kucoin.com/api/v1/market/candles?type=1min&symbol=SKR-USDT&startAt=1791347820&endAt=1791348120",
+    ]);
+  });
+
+  it("null before the last minute has closed (+5 s), without fetching; rejects bad ts", async () => {
+    const f = fakeFetch(candles5);
+    expect(await fetchKucoinMedian5("SKR", END, f.fn, END + 4)).toBeNull();
+    expect(f.calls).toHaveLength(0);
+    expect(await fetchKucoinMedian5("SKR", END, f.fn, END + 5)).not.toBeNull();
+    await expect(fetchKucoinMedian5("SKR", 1.5, f.fn, 9e9)).rejects.toThrow();
+    await expect(fetchKucoinMedian5("SKR", 0, f.fn, 9e9)).rejects.toThrow();
   });
 });

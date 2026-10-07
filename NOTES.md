@@ -157,3 +157,7 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 ## T032 — done 2026-10-07
 - `src/core/secret.ts`: `MASTER_MESSAGE` (exact spec text), `masterFromSignature(sig64) → Uint8Array(32)` (= sha256; rejects non-64-byte/all-zero), `saltFor(master, asset, deadline)` (HMAC via `@noble/hashes/hmac`), `recoverCall(master, {hash, deadline, asset}, blockTime) → {call, json, salt} | null` scanning created ∈ [blockTime−900, blockTime] × {up, down}.
 - Fixed vector (sig = bytes 0..63) computed with Python hashlib/hmac in `secret.test.ts`. Master is raw bytes; secure-store persistence (hex) and the sign-twice determinism check belong to the app/chain layer (T035+).
+
+## T033 — done 2026-10-07
+- `price.ts`: `refTimeForCommit(bt) = floor(bt/60)*60 + 60`, `priceAt(source, asset, ts)` (validates ts, delegates to the source's per-asset routing). `kucoinSource.at` now = `fetchKucoinMedian5` (one request `startAt=end-300&endAt=end`, end = floor(ts/60)*60, null until end+5 s), so `selectPriceSource` SKR follows the v2 rule; legacy `fetchKucoinAt` kept but unused (v1 app path `useReceipts` therefore also gets the median for SKR until T034/T036 replace it).
+- `medianClose`: only rows starting end−300…end−60 (KuCoin sometimes returns the row starting at endAt — ignored); fewer than 5 rows → median of those present (even → mean of middle two), none → null. Real fixture `kucoin-candles5-skr-2026-10-07.json` (end 1791348120 → 0.01646).

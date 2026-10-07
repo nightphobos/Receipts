@@ -3,7 +3,7 @@
  * Pure TS: no RN/Expo imports; fetch, clock and env are injected.
  */
 import { ASSETS, type Asset } from "./call";
-import { fetchKucoinAt, fetchKucoinLatest } from "./kucoin";
+import { fetchKucoinLatest, fetchKucoinMedian5 } from "./kucoin";
 import { FEED_IDS, fetchLatestPrice, fetchPriceAt, type FetchFn, type PythOptions, type PythPrice } from "./pyth";
 
 export type PriceSourceKind = "pyth" | "kucoin" | "mock";
@@ -45,8 +45,24 @@ export function kucoinSource(fetchFn: FetchFn, nowFn: () => number): PriceSource
     kind: "kucoin",
     kindOf: () => "kucoin",
     latest: (asset) => fetchKucoinLatest(asset, fetchFn),
-    at: (asset, ts) => fetchKucoinAt(asset, ts, fetchFn, nowFn()),
+    at: (asset, ts) => fetchKucoinMedian5(asset, ts, fetchFn, nowFn()),
   };
+}
+
+/** v2 reference time of a commit: t0 = ceil_to_minute(blockTime), +60 if blockTime is already on a minute boundary. */
+export function refTimeForCommit(blockTime: number): number {
+  if (!Number.isSafeInteger(blockTime) || blockTime <= 0) throw new Error("blockTime must be a positive whole unix time");
+  return Math.floor(blockTime / 60) * 60 + 60;
+}
+
+/**
+ * v2 scoring price (P0 at refTimeForCommit, PT at the deadline): SOL = Pyth at ts,
+ * SKR = KuCoin median of 5 one-minute closes ending at floor(ts/60)*60 — per the
+ * source's asset routing. null = not resolvable yet.
+ */
+export async function priceAt(source: PriceSource, asset: Asset, ts: number): Promise<PythPrice | null> {
+  if (!Number.isSafeInteger(ts) || ts <= 0) throw new Error("Timestamp must be a positive whole unix time");
+  return source.at(asset, ts);
 }
 
 export const MOCK_BASE: Record<Asset, number> = { SOL: 150, SKR: 0.05 };

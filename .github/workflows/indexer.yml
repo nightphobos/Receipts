@@ -1,0 +1,50 @@
+# Receipts leaderboard indexer: every 15 min, re-reads the registry, updates the price cache,
+# rebuilds site/ and deploys it to GitHub Pages. Anyone can re-run it: `npx tsx scripts/indexer.ts`.
+# Setup (human): Settings → Pages → Source "GitHub Actions"; Settings → Secrets → Actions:
+#   PYTH_API_KEY (Hermes key, required for SOL prices), INDEXER_RPC_URL (optional, else public mainnet).
+name: indexer
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: indexer
+  cancel-in-progress: false
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+      - run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Run indexer
+        run: npx tsx scripts/indexer.ts
+        env:
+          PYTH_API_KEY: ${{ secrets.PYTH_API_KEY }}
+          INDEXER_RPC_URL: ${{ secrets.INDEXER_RPC_URL }}
+      - name: Commit indexer state (registry + permanent price cache)
+        run: |
+          git config user.name "receipts-indexer"
+          git config user.email "receipts-indexer@users.noreply.github.com"
+          git add indexer-data
+          git diff --cached --quiet || (git commit -m "indexer: update state" && git push)
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

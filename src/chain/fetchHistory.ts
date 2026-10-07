@@ -1,5 +1,6 @@
 import type {
   ConfirmedSignatureInfo,
+  Finality,
   GetVersionedTransactionConfig,
   ParsedInstruction,
   ParsedTransactionWithMeta,
@@ -12,7 +13,11 @@ import { MEMO_PREFIX } from "../core/memo";
 
 /** The two Connection methods history reading needs (injected so tests can mock them). */
 export interface HistoryConnection {
-  getSignaturesForAddress(address: PublicKey, options?: SignaturesForAddressOptions): Promise<ConfirmedSignatureInfo[]>;
+  getSignaturesForAddress(
+    address: PublicKey,
+    options?: SignaturesForAddressOptions,
+    commitment?: Finality,
+  ): Promise<ConfirmedSignatureInfo[]>;
   getParsedTransactions(
     signatures: string[],
     config?: GetVersionedTransactionConfig,
@@ -106,7 +111,7 @@ export async function fetchMemoHistory(
   let before: string | undefined;
   while (infos.length < max) {
     const limit = Math.min(pageSize, max - infos.length);
-    const page = await conn.getSignaturesForAddress(wallet, { before, limit });
+    const page = await conn.getSignaturesForAddress(wallet, { before, limit }, "confirmed");
     infos.push(...page);
     if (page.length < limit) break;
     before = page[page.length - 1].signature;
@@ -120,7 +125,7 @@ export async function fetchMemoHistory(
   const out: MemoTx[] = [];
   for (let i = 0; i < wanted.length; i += PARSED_TX_BATCH) {
     const batch = wanted.slice(i, i + PARSED_TX_BATCH);
-    const txs = await conn.getParsedTransactions(batch, { maxSupportedTransactionVersion: 0 });
+    const txs = await conn.getParsedTransactions(batch, { maxSupportedTransactionVersion: 0, commitment: "confirmed" });
     txs.forEach((tx, j) => {
       if (tx) out.push(...toMemoTxs(batch[j], tx, walletStr));
     });

@@ -56,7 +56,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ClusterProvider>
-        <ConnectionProvider config={{ commitment: "processed" }}>
+        <ConnectionProvider config={{ commitment: "confirmed" }}>
           <SafeAreaView
             style={[
               styles.shell,

@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Linking, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { Linking, RefreshControl, ScrollView, Share, StyleSheet, View } from "react-native";
 import { Button, Card, Divider, Text } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { describeCallV2, formatCountdown, formatUsd, solscanTxUrl } from "../core/format";
 import { SOURCE_LABEL, isDemo } from "../core/price";
-import { REVEAL_GRACE_SEC, statusOfV2, type StatusV2 } from "../core/score";
+import { REVEAL_GRACE_SEC, statusOfV2, type ReceiptV2, type StatusV2 } from "../core/score";
+import { resultShareText, sealedShareText } from "../core/share";
 import { canRevealV2, findSecretV2, revealReceiptV2 } from "../chain/reveal";
 import { isUserRejection } from "../chain/seal";
 import { RECEIPTS_QUERY_KEY, type ReceiptRowV2 } from "../hooks/useReceipts";
@@ -72,10 +74,13 @@ function resolutionText(row: ReceiptRowV2, status: StatusV2, now: number, priceN
 
 export function ReceiptDetailV2({
   row,
+  all,
   refetch,
   isRefetching,
 }: {
   row: ReceiptRowV2;
+  /** All v2 receipts of the wallet: receipt number and record in the share text. */
+  all: readonly ReceiptV2[];
   refetch: () => void;
   isRefetching: boolean;
 }) {
@@ -105,6 +110,17 @@ export function ReceiptDetailV2({
   useEffect(() => {
     if (sentReveal && resolved) setCeremonyKey((k) => k ?? 1);
   }, [sentReveal, resolved]);
+
+  // Sealed: direction stays hidden. Resolved: the result card. Nothing else is shareable.
+  const share =
+    status === "sealed"
+      ? sealedShareText(receipt, cluster)
+      : resultShareText(receipt, all, now, cluster, { demo });
+  const onShare = () => Share.share({ message: share ?? "" }).catch(() => undefined);
+  const onCopy = async () => {
+    await Clipboard.setStringAsync(share ?? "");
+    showToast("Share text copied");
+  };
 
   const onReveal = useCallback(async () => {
     if (!selectedAccount) return;
@@ -192,6 +208,17 @@ export function ReceiptDetailV2({
             Replay reveal
           </Button>
         </>
+      )}
+
+      {share && (
+        <View style={[styles.row, styles.gapSmall]}>
+          <Button mode="contained-tonal" icon="share-variant" onPress={onShare}>
+            {status === "sealed" ? "Share sealed call" : "Share result"}
+          </Button>
+          <Button mode="text" icon="content-copy" onPress={onCopy}>
+            Copy
+          </Button>
+        </View>
       )}
 
       <Card style={styles.gap}>

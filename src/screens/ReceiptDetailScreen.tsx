@@ -139,7 +139,14 @@ export function ReceiptDetailScreen({ route }: Props) {
   );
 
   if (rowV2) {
-    return <ReceiptDetailV2 row={rowV2} refetch={refetchAll} isRefetching={receiptsV2.isRefetching} />;
+    return (
+      <ReceiptDetailV2
+        row={rowV2}
+        all={(receiptsV2.data ?? []).map((r) => r.receipt)}
+        refetch={refetchAll}
+        isRefetching={receiptsV2.isRefetching}
+      />
+    );
   }
 
   if (receipts.isLoading || receiptsV2.isLoading) {

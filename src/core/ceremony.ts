@@ -42,9 +42,14 @@ function signed(x: number, digits: number): string {
   return `${x > 0 ? "+" : "−"}${abs}`;
 }
 
+/** "+1.9σ"; "—σ" when nothing is scored yet. */
+export function formatZ(z: number | null): string {
+  return `${z === null ? "—" : signed(z, 1)}σ`;
+}
+
 /** "+1.9σ vs coin flip" (spec "Rating"); "—σ vs coin flip" when nothing is scored yet. */
 export function formatSigma(z: number | null): string {
-  return `${z === null ? "—" : signed(z, 1)}σ vs coin flip`;
+  return `${formatZ(z)} vs coin flip`;
 }
 
 /** Signed move from P0 to PT: "+2.3%". */

@@ -54,7 +54,7 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 - [x] T045 Parallax background per spec: `src/core/parallax.ts` (pure, test-first), `ParallaxBackground` with drift + DeviceMotion tilt (`expo-sensors`) + scroll offset, pixel snapping, reduce-motion off switch, paused in background. Mount it behind all screens.
 - [x] T046 Mascot Chekko (5 poses as pixel rect data) + dialog panel; idle on New, eat on Seal, print → cheer/cry on reveal.
 - [x] T037 App: reveal ceremony animation + haptic; Profile v2 (zσ, N, hit-rate, hidden & forfeited, streak, legacy section); list/detail show P0/PT and VOID.
-- [ ] T038 Share texts (sealed + result) via RN `Share` + copy, exactly per spec; unit-test the text builders in core.
+- [x] T038 Share texts (sealed + result) via RN `Share` + copy, exactly per spec; unit-test the text builders in core.
 - [ ] T039 `scripts/indexer.ts` + `.github/workflows/indexer.yml` per spec; run once against mainnet locally, commit `site/` sample and `indexer-data/`. Unit-test the aggregation in core.
 - [ ] T040 App Leaderboard tab: overall (≥24h, eligible only) and SKR Daily tabs; from `EXPO_PUBLIC_LEADERBOARD_URL` or computed in-app from the registry if unset; tap → read-only profile of that wallet.
 - [ ] T041 SKR tips: verify SKR mint, tx builder (idempotent ATA + transfer), Tip 10/50/100 on read-only profiles via MWA. Tests for the builder.

@@ -25,6 +25,7 @@ import { useConnection } from "../utils/ConnectionProvider";
 import { ConnectButton } from "../components/sign-in/sign-in-ui";
 import { alertAndLog } from "../utils/alertAndLog";
 import { showToast } from "../components/ui/toast";
+import { scheduleSealReminders } from "../notifications/reminders";
 import {
   Body,
   Chip,
@@ -166,6 +167,14 @@ export function NewReceiptScreen() {
         result.call,
       );
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Number may be off by unindexed seals; reconcile on the next history read corrects the text.
+      await scheduleSealReminders({
+        hash,
+        signature,
+        asset: result.call.asset,
+        deadline: result.call.deadline,
+        number: (receipts.data?.length ?? 0) + 1,
+      });
       // Let Chekko finish chewing before leaving the screen.
       await new Promise((r) => setTimeout(r, 700));
       setDir(null);
@@ -182,7 +191,7 @@ export function NewReceiptScreen() {
     } finally {
       setSealing(false);
     }
-  }, [selectedAccount, asset, dir, horizon, masterKey.state, setupMaster, connection, wallet, navigation, queryClient]);
+  }, [selectedAccount, asset, dir, horizon, masterKey.state, setupMaster, connection, wallet, navigation, queryClient, receipts.data]);
 
   if (!selectedAccount) {
     return (

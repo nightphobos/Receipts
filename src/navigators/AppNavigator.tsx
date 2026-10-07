@@ -2,7 +2,7 @@
  * The app navigator (formerly "AppNavigator" and "MainNavigator") is used for the primary
  * navigation flows of your app.
  */
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
 import * as Screens from "../screens";
@@ -80,9 +80,12 @@ const navTheme = { ...nightTheme, colors: { ...nightTheme.colors, background: "t
 export interface NavigationProps
   extends Partial<React.ComponentProps<typeof NavigationContainer>> {}
 
+/** For navigation from outside screens (tapped reveal reminders). */
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
 export const AppNavigator = (props: NavigationProps) => {
   return (
-    <NavigationContainer theme={navTheme} {...props}>
+    <NavigationContainer ref={navigationRef} theme={navTheme} {...props}>
       <StatusBar style="light" />
       <AppStack />
     </NavigationContainer>

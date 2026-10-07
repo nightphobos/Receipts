@@ -13,6 +13,7 @@ import { SOURCE_LABEL, isDemo } from "../core/price";
 import { REVEAL_GRACE_SEC, statusOfV2, type ReceiptV2, type StatusV2 } from "../core/score";
 import { resultShareText, sealedShareText } from "../core/share";
 import { canRevealV2, findSecretV2, revealReceiptV2 } from "../chain/reveal";
+import { cancelRevealReminders } from "../notifications/reminders";
 import { isUserRejection } from "../chain/seal";
 import { RECEIPTS_QUERY_KEY, type ReceiptRowV2 } from "../hooks/useReceipts";
 import { useMasterKey } from "../hooks/useMasterKey";
@@ -169,6 +170,7 @@ export function ReceiptDetailV2({
       );
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSentReveal(sig);
+      cancelRevealReminders(receipt.hash);
       // Give the RPC a moment to index the reveal before re-reading history.
       setTimeout(() => queryClient.invalidateQueries({ queryKey: [RECEIPTS_QUERY_KEY] }), 3000);
     } catch (e) {

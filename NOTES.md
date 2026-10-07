@@ -240,3 +240,8 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 
 ## HUMAN — SKR integration v2 2026-10-07
 - Phase 9 (T055–T057): SKR balance gate (≥100 SKR or Genesis), SKR Daily streak, tips discoverable via memo `rcpt:2:t:` + registry tag → MOST TIPPED tab. Runs after Phase 8.
+
+## T051 — done 2026-10-07
+- Core `reminders.ts`: `remindersForCall` (ids `rcpt-reveal:<hash>:due|last`, at deadline and deadline + 20 h, texts name asset + #N, never the direction — the task's "▲/▼" was dropped for that reason), `remindersFromReceipts` (unrevealed, non-overlap, future only, numbered by `receiptNumber`), `reconcileReminders` (cancels stale ones of known receipts / past-due, keeps future ones of hashes not yet indexed, reschedules on changed time/text, ignores foreign ids).
+- App: `src/notifications/reminders.ts` (channel "Reveal reminders", explainer Alert once then OS prompt on first seal — flag `rcpt:reminders-asked`, denial = silent; demo → no-op), `ReminderSync` in App.tsx (reconcile whenever v2 history loads, without prompting; tap → `navigationRef.navigate("ReceiptDetail", {hash, signature})`, waits for nav on cold start). Seal schedules (N = loaded v2 count + 1, reconcile fixes it), DetailV2 reveal cancels.
+- expo-notifications ~0.29.14 + app.json plugin (color only) → native: next APK needs `npx expo prebuild --platform android --no-install` before gradle. Android 13+ POST_NOTIFICATIONS permission comes from the module manifest. Android bundle export OK; not checked on device.

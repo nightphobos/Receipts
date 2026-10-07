@@ -14,6 +14,7 @@ import { ParallaxBackground, colors, nightTheme, useThemeFonts } from "./src/the
 import { useEffect, useState } from "react";
 import { loadDemoState } from "./src/demo/store";
 import { DemoBanner, DemoRibbon, DemoSync } from "./src/demo/DemoChrome";
+import { ReminderSync } from "./src/notifications/ReminderSync";
 
 // Queries opt into an error toast with `meta: { errorToast: "<prefix>" }`.
 const queryClient = new QueryClient({
@@ -39,6 +40,7 @@ export default function App() {
           <SafeAreaView style={styles.shell}>
             <PaperProvider theme={nightTheme}>
               <DemoSync />
+              <ReminderSync />
               <DemoBanner />
               <ParallaxBackground>
                 <AppNavigator />

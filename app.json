@@ -30,7 +30,13 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "color": "#14122B"
+        }
+      ]
     ],
     "backgroundColor": "#14122B"
   }

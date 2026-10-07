@@ -11,6 +11,7 @@ import {
   profileUrl,
 } from "../leaderboardSource";
 import { encodeCommitMemoV2, encodeRevealMemoV2 } from "../memo";
+import { SKR_MINT, tipMemo } from "../tip";
 
 const DAY = 86400;
 const T = 1800000000; // Fri 2027-01-15 08:00 UTC
@@ -70,12 +71,16 @@ describe("parse", () => {
     expect(parseLeaderboard({ ...lb, version: LEADERBOARD_VERSION + 1 })).toBeNull();
     expect(parseLeaderboard({ ...lb, overall: "x" })).toBeNull();
     expect(parseLeaderboard({ ...lb, skrDaily: [{ wallet: 1 }] })).toBeNull();
+    expect(parseLeaderboard({ ...lb, appreciated: undefined })).toBeNull();
+    expect(parseLeaderboard({ ...lb, appreciated: [{ wallet: "W", tipsSkr: "1", tippers: 1 }] })).toBeNull();
     expect(parseLeaderboard(null)).toBeNull();
     expect(parseLeaderboard("[]")).toBeNull();
     const p = walletProfile("Wa11et", [], false, NOW);
     expect(parseWalletProfile({ ...p, wallet: 5 })).toBeNull();
     expect(parseWalletProfile({ ...p, receipts: {} })).toBeNull();
     expect(parseWalletProfile({ ...p, version: 0 })).toBeNull();
+    expect(parseWalletProfile({ ...p, skrHolder: "yes" })).toBeNull();
+    expect(parseWalletProfile({ ...p, tips: null })).toBeNull();
   });
 });
 
@@ -124,5 +129,48 @@ describe("computeLeaderboard", () => {
     expect(profiles.get("Alice")?.stats.pending).toBe(10);
     // P0 at t0 and PT at deadline: day k's deadline is day k+1's commit + 0, distinct from t0 (= commit + 60).
     expect(price).toHaveBeenCalledTimes(20);
+  });
+});
+
+describe("computeLeaderboard — SKR integration v2", () => {
+  it("SKR balance gate replaces Genesis when held; tips from registry txs feed rows and `appreciated`", async () => {
+    const tipTx: MemoTx = {
+      signature: "tip1",
+      blockTime: T,
+      signer: "Bob",
+      memo: tipMemo("AaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA"),
+      failed: false,
+      tagged: true,
+      tip: { mint: SKR_MINT, from: "Bob", to: "AaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA", amount: 50 },
+    };
+    const A = "AaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA";
+    const txs = [...wallet24h(A, 10), ...wallet24h("Carol", 10), tipTx];
+    const skrBalance = jest.fn(async (w: string) => (w === A ? 150 : 0));
+    const { leaderboard, profiles } = await computeLeaderboard({
+      txs,
+      nowSec: NOW,
+      price: async (_a, ts) => ts,
+      hasGenesis: async () => false,
+      skrBalance,
+    });
+    expect(leaderboard.overall.map((r) => [r.wallet, r.tipsSkr])).toEqual([[A, 50]]);
+    expect(leaderboard.appreciated).toEqual([{ wallet: A, tipsSkr: 50, tippers: 1 }]);
+    expect(profiles.get(A)).toMatchObject({ skrHolder: true, tips: { tipsSkr: 50, tippers: 1, tipsCount: 1 } });
+    expect(profiles.get("Carol")?.skrHolder).toBe(false);
+    expect(skrBalance.mock.calls.map((c) => c[0]).sort()).toEqual([A, "Carol"]);
+    expect(profiles.has("Bob")).toBe(false); // a tipper with no receipts has no profile
+  });
+
+  it("failing SKR balance lookups count as no holder", async () => {
+    const { leaderboard } = await computeLeaderboard({
+      txs: wallet24h("Alice", 10),
+      nowSec: NOW,
+      price: async (_a, ts) => ts,
+      hasGenesis: async () => false,
+      skrBalance: async () => {
+        throw new Error("rpc");
+      },
+    });
+    expect(leaderboard.overall).toEqual([]);
   });
 });

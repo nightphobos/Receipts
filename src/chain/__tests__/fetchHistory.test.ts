@@ -16,9 +16,12 @@ import {
   fetchMemoHistory,
   fetchRegistry,
   registryTagSources,
+  tipTransfers,
   toMemoTxs,
   type HistoryConnection,
 } from "../fetchHistory";
+import { SKR_MINT } from "../../core/tip";
+import tipFixture from "./fixtures/parsed-tip-tx-handbuilt.json";
 import recorded from "./fixtures/parsed-tx-memo-mainnet-2026-10-06.json";
 
 // Recorded mainnet tx: fee payer 7pYQ… and memo signer 422A… both sign; memo is a coinflow JSON string.
@@ -359,5 +362,59 @@ describe("fetchRegistry", () => {
       ["s9", "s10", 4],
     ]);
     expect(txs.map((t) => t.signature)).toEqual(["s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9"]);
+  });
+});
+
+describe("tip txs (rcpt:2:t:)", () => {
+  const TIPPER = "422AGE5PRh165soVeW93Uha2xmwtBvtpssaGDyynHpVb";
+  const RECIPIENT = "4ZGj29TZeZDGpxqSAue4JcMGu24MQA5USC6td6X2SXVd";
+  const TO_ATA = "4VGifQC1WkyJKiKxZhp3T6d3PYnAjebGiaLHCGe1LoBw";
+  const tipTx = () => JSON.parse(JSON.stringify(tipFixture)) as any;
+
+  it("tipTransfers reads transferChecked: mint, authority, destination owner, whole amount", () => {
+    expect(tipTransfers(asParsed(tipTx()))).toEqual([{ mint: SKR_MINT, from: TIPPER, to: RECIPIENT, amount: 50 }]);
+  });
+
+  it("tipTransfers reads a plain transfer, taking mint/decimals/owner from the token balances", () => {
+    const raw = tipTx();
+    const ix = raw.transaction.message.instructions[2];
+    ix.parsed = { type: "transfer", info: { authority: TIPPER, destination: TO_ATA, source: "x", amount: "12500000" } };
+    expect(tipTransfers(asParsed(raw))).toEqual([{ mint: SKR_MINT, from: TIPPER, to: RECIPIENT, amount: 12.5 }]);
+    delete raw.meta.postTokenBalances; // owner unknown → not attributable
+    expect(tipTransfers(asParsed(raw))).toEqual([]);
+  });
+
+  it("toMemoTxs attaches the matching transfer to the tip memo (amount from the instruction, not the memo)", () => {
+    expect(toMemoTxs("sig", asParsed(tipTx()), TIPPER)).toEqual([
+      {
+        signature: "sig",
+        blockTime: tipFixture.blockTime,
+        signer: TIPPER,
+        memo: `rcpt:2:t:${RECIPIENT}`,
+        failed: false,
+        tagged: true,
+        tip: { mint: SKR_MINT, from: TIPPER, to: RECIPIENT, amount: 50 },
+      },
+    ]);
+  });
+
+  it("no tip when the transfer goes elsewhere than the memo says", () => {
+    const raw = tipTx();
+    raw.transaction.message.instructions[3].parsed = `rcpt:2:t:${FEE_PAYER}`;
+    const [m] = toMemoTxs("sig", asParsed(raw), TIPPER);
+    expect(m.memo).toBe(`rcpt:2:t:${FEE_PAYER}`);
+    expect(m.tip).toBeUndefined();
+  });
+
+  it("fetchRegistry returns the tip attributed to the tagging tipper", async () => {
+    const conn: HistoryConnection = {
+      getSignaturesForAddress: async () => [
+        { signature: "tipsig", slot: 1, err: null, memo: `[53] rcpt:2:t:${RECIPIENT}`, blockTime: 1 } as ConfirmedSignatureInfo,
+      ],
+      getParsedTransactions: async (sigs) => sigs.map(() => asParsed(tipTx())),
+    };
+    const txs = await fetchRegistry(conn);
+    expect(txs).toHaveLength(1);
+    expect(txs[0]).toMatchObject({ signer: TIPPER, tagged: true, tip: { to: RECIPIENT, amount: 50 } });
   });
 });

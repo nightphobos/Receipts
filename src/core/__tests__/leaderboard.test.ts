@@ -2,8 +2,10 @@ import { canonicalJsonV2, type CallV2 } from "../call";
 import { commitHash } from "../commit";
 import type { MemoTx } from "../history";
 import {
+  bestSkrDailyStreak,
   buildLeaderboard,
   isSkrDaily,
+  skrDailyStreak,
   priceKey,
   pricesNeeded,
   receiptsByWallet,
@@ -13,6 +15,8 @@ import {
 } from "../leaderboard";
 import { encodeCommitMemoV2, encodeRevealMemoV2 } from "../memo";
 import { horizonClass, type ReceiptV2 } from "../score";
+import { SKR_MINT, tipMemo } from "../tip";
+import { tipTotals } from "../tips";
 
 const H = 3600;
 const DAY = 86400;
@@ -140,7 +144,7 @@ describe("buildLeaderboard", () => {
       ],
       NOW,
     );
-    expect(lb.version).toBe(1);
+    expect(lb.version).toBe(2);
     expect(lb.generatedAt).toBe(NOW);
     expect(lb.wallets).toBe(5);
     expect(lb.overall.map((r) => r.wallet)).toEqual(["W-strong", "W-tie", "W-weak"]);
@@ -200,5 +204,129 @@ describe("walletProfile", () => {
     expect(revealed).toMatchObject({ asset: "SOL", horizon: "24h", dir: "up", p0: 100, pt: 101 });
     expect(revealed.revealSignature).toMatch(/^r/);
     expect(p.receipts[0].dir).toBeUndefined(); // hidden until revealed
+  });
+});
+
+/** An SKR Daily call committed at 08:00 UTC on day `k` after T (deadline: next day 12:00 UTC). */
+const dailyOn = (k: number, make: (o: Partial<ReceiptV2>) => ReceiptV2 = hit, over: Partial<ReceiptV2> = {}) => {
+  const bt = T + k * DAY;
+  return make({
+    asset: "SKR",
+    commit: { signature: `sd${++n}`, blockTime: bt },
+    deadline: Math.floor(bt / DAY) * DAY + 12 * H + DAY,
+    ...over,
+  });
+};
+const days = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
+
+describe("skrDailyStreak / bestSkrDailyStreak", () => {
+  it("counts consecutive UTC days with a kept SKR Daily call, ending today", () => {
+    const rs = [...days(25, 29).map((k) => dailyOn(k)), dailyOn(30, rcpt)]; // today's still sealed
+    expect(skrDailyStreak(rs, NOW)).toBe(6);
+    expect(bestSkrDailyStreak(rs, NOW)).toBe(6);
+  });
+
+  it("ends yesterday while today's SKR Daily is not sealed yet; a missed day resets it", () => {
+    expect(skrDailyStreak(days(25, 29).map((k) => dailyOn(k)), NOW)).toBe(5);
+    expect(skrDailyStreak(days(20, 28).map((k) => dailyOn(k)), NOW)).toBe(0);
+    expect(bestSkrDailyStreak(days(20, 28).map((k) => dailyOn(k)), NOW)).toBe(9);
+  });
+
+  it("a forfeited SKR Daily breaks the streak; misses and VOIDs do not", () => {
+    const rs = [
+      ...days(20, 24).map((k) => dailyOn(k)),
+      dailyOn(25, miss),
+      dailyOn(26, rcpt), // never revealed → forfeited
+      dailyOn(27, (o) => rcpt({ dir: "down", p0: 1, pt: 1, ...o })), // VOID
+      dailyOn(28),
+      dailyOn(29, rcpt), // deadline today 12:00 → still sealed
+    ];
+    expect(skrDailyStreak(rs, NOW)).toBe(3);
+    expect(bestSkrDailyStreak(rs, NOW)).toBe(6);
+  });
+
+  it("ignores other calls; an overlapping second call neither counts nor breaks", () => {
+    const rs = [
+      ...days(27, 29).map((k) => dailyOn(k)),
+      dailyOn(28, miss, { overlap: true }),
+      ...days(20, 29).map((k) => hit({ commit: { signature: `o${k}`, blockTime: T + k * DAY } })),
+    ];
+    expect(skrDailyStreak(rs, NOW)).toBe(3);
+    expect(skrDailyStreak([dailyOn(29, miss, { overlap: true })], NOW)).toBe(0);
+    expect(bestSkrDailyStreak([], NOW)).toBe(0);
+  });
+});
+
+describe("buildLeaderboard — SKR integration v2", () => {
+  const ten = () => [...onDays(10, hit)];
+
+  it("an SKR holder without Genesis is listed in OVERALL and SKR DAILY", () => {
+    const lb = buildLeaderboard(
+      [
+        { wallet: "Holder", receipts: [...ten(), dailyOn(29)], hasGenesis: false, skrHolder: true },
+        { wallet: "Nobody", receipts: [...ten(), dailyOn(29)], hasGenesis: false, skrHolder: false },
+      ],
+      NOW,
+    );
+    expect(lb.overall.map((r) => r.wallet)).toEqual(["Holder"]);
+    expect(lb.skrDaily.map((r) => r.wallet)).toEqual(["Holder"]);
+  });
+
+  it("SKR Daily rows carry the SKR Daily streak and best streak", () => {
+    const rs = [...days(20, 24).map((k) => dailyOn(k)), dailyOn(26), dailyOn(27), dailyOn(28), dailyOn(29)];
+    const lb = buildLeaderboard([{ wallet: "W", receipts: rs, hasGenesis: true }], NOW);
+    expect(lb.skrDaily[0]).toMatchObject({ wallet: "W", n: 9, streak: 4, bestStreak: 5 });
+  });
+
+  it("every row gets tipsSkr; `appreciated` = top tipped wallets (receipts not needed)", () => {
+    const A = "AaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA";
+    const B = "BbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbB";
+    const C = "CccccccccccccccccccccccccccccccccccccccccccC";
+    const t = (sig: string, from: string, to: string, amount: number): MemoTx => ({
+      signature: sig,
+      blockTime: T,
+      signer: from,
+      memo: tipMemo(to),
+      failed: false,
+      tagged: true,
+      tip: { mint: SKR_MINT, from, to, amount },
+    });
+    const tips = tipTotals([t("1", B, A, 50), t("2", C, A, 10), t("3", A, C, 100)]);
+    const lb = buildLeaderboard(
+      [
+        { wallet: A, receipts: ten(), hasGenesis: true },
+        { wallet: B, receipts: ten(), hasGenesis: true },
+      ],
+      NOW,
+      tips,
+    );
+    expect(lb.overall.map((r) => [r.wallet, r.tipsSkr])).toEqual([
+      [A, 60],
+      [B, 0],
+    ]);
+    expect(lb.appreciated).toEqual([
+      { wallet: C, tipsSkr: 100, tippers: 1 },
+      { wallet: A, tipsSkr: 60, tippers: 2 },
+    ]);
+    expect(buildLeaderboard([], NOW).appreciated).toEqual([]);
+  });
+});
+
+describe("walletProfile — SKR integration v2", () => {
+  it("adds the SKR holder badge, SKR Daily streaks and received tips", () => {
+    const rs = days(27, 29).map((k) => dailyOn(k));
+    const p = walletProfile("W", rs, false, NOW, {
+      skrHolder: true,
+      tips: { wallet: "W", tipsSkr: 60, tippers: 2, tipsCount: 3 },
+    });
+    expect(p).toMatchObject({
+      hasGenesis: false,
+      skrHolder: true,
+      skrDailyStreak: 3,
+      bestSkrDailyStreak: 3,
+      tips: { tipsSkr: 60, tippers: 2, tipsCount: 3 },
+    });
+    expect(p.eligibility.skrHolder).toBe(true);
+    expect(walletProfile("W", [], true, NOW)).toMatchObject({ skrHolder: false, tips: { tipsSkr: 0, tippers: 0, tipsCount: 0 } });
   });
 });

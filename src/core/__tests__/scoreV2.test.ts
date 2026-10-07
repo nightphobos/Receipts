@@ -184,12 +184,23 @@ describe("eligibility", () => {
 
   it("eligible with N ≥ 10 (≥ 24h), ≥ 3 UTC days and a Genesis token", () => {
     const e = eligibility(tenOnThreeDays(), now, true);
-    expect(e).toEqual({ eligible: true, n: 10, days: 3, hasGenesis: true });
+    expect(e).toEqual({ eligible: true, n: 10, days: 3, hasGenesis: true, skrHolder: false });
     expect(LEADERBOARD_MIN_N).toBe(10);
     expect(LEADERBOARD_MIN_DAYS).toBe(3);
   });
-  it("not eligible without the Genesis token", () => {
+  it("not eligible without the Genesis token or the SKR gate", () => {
     expect(eligibility(tenOnThreeDays(), now, false).eligible).toBe(false);
+    expect(eligibility(tenOnThreeDays(), now, false, false).eligible).toBe(false);
+  });
+  it("an SKR holder (≥ SKR_GATE_MIN) is eligible without Genesis", () => {
+    expect(eligibility(tenOnThreeDays(), now, false, true)).toEqual({
+      eligible: true,
+      n: 10,
+      days: 3,
+      hasGenesis: false,
+      skrHolder: true,
+    });
+    expect(eligibility(tenOnThreeDays().slice(1), now, false, true).eligible).toBe(false);
   });
   it("not eligible with N = 9", () => {
     const e = eligibility(tenOnThreeDays().slice(1), now, true);

@@ -17,9 +17,10 @@ import {
   type StatsV2,
   type StatusV2,
 } from "./score";
+import { mostAppreciated, type AppreciatedRow, type TipTotal } from "./tips";
 
 /** Bumped when the JSON shape of site/leaderboard.json or site/u/<wallet>.json changes. */
-export const LEADERBOARD_VERSION = 1;
+export const LEADERBOARD_VERSION = 2;
 
 /** A price is only fetched once its timestamp is this old (sources need a moment to settle). */
 export const PRICE_SETTLE_SEC = 60;
@@ -87,11 +88,60 @@ export function isSkrDaily(r: ReceiptV2): boolean {
   );
 }
 
+/** SKR Daily calls that keep a streak alive: everything except forfeited and overlap (VOID keeps it). */
+function skrDailyDays(receipts: readonly ReceiptV2[], nowSec: number): Set<number> {
+  const days = new Set<number>();
+  for (const r of receipts) {
+    if (r.overlap || !isSkrDaily(r)) continue;
+    if (statusOfV2(r, nowSec) === "forfeited") continue;
+    days.add(utcDay(r.commit.blockTime));
+  }
+  return days;
+}
+
+/** Forfeited SKR Daily days: they break a run even if another call landed the same day. */
+function forfeitedSkrDailyDays(receipts: readonly ReceiptV2[], nowSec: number): Set<number> {
+  const days = new Set<number>();
+  for (const r of receipts)
+    if (!r.overlap && isSkrDaily(r) && statusOfV2(r, nowSec) === "forfeited") days.add(utcDay(r.commit.blockTime));
+  return days;
+}
+
+/**
+ * SKR Daily streak: consecutive UTC commit days with a kept SKR Daily call (sealed, revealed or still
+ * revealable — a forfeited one breaks the streak, a VOID does not), ending today, or yesterday while
+ * today's SKR Daily is not sealed yet. Every SKR Daily sealed on day d shares the deadline d+1 12:00 UTC.
+ */
+export function skrDailyStreak(receipts: readonly ReceiptV2[], nowSec: number): number {
+  const days = skrDailyDays(receipts, nowSec);
+  const broken = forfeitedSkrDailyDays(receipts, nowSec);
+  let d = utcDay(nowSec);
+  if (!days.has(d)) d--;
+  let count = 0;
+  while (days.has(d) && !broken.has(d)) (count++, d--);
+  return count;
+}
+
+/** Longest SKR Daily streak ever (same rules as skrDailyStreak). */
+export function bestSkrDailyStreak(receipts: readonly ReceiptV2[], nowSec: number): number {
+  const broken = forfeitedSkrDailyDays(receipts, nowSec);
+  const days = [...skrDailyDays(receipts, nowSec)].filter((d) => !broken.has(d)).sort((a, b) => a - b);
+  let best = 0;
+  let run = 0;
+  for (let i = 0; i < days.length; i++) {
+    run = i > 0 && days[i] === days[i - 1] + 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+  }
+  return best;
+}
+
 export interface WalletEntry {
   wallet: string;
   /** With p0/pt filled (see withPrices). */
   receipts: ReceiptV2[];
   hasGenesis: boolean;
+  /** SKR balance ≥ SKR_GATE_MIN. Missing = false. */
+  skrHolder?: boolean;
 }
 
 export interface LeaderboardRow {
@@ -107,7 +157,12 @@ export interface LeaderboardRow {
   voids: number;
   /** Distinct UTC commit days of the scored calls. */
   days: number;
+  /** General streak on OVERALL rows; SKR Daily streak on SKR DAILY rows. */
   streak: number;
+  /** SKR DAILY rows only: longest SKR Daily streak. */
+  bestStreak?: number;
+  /** Received SKR tips, whole SKR. */
+  tipsSkr: number;
 }
 
 export interface Leaderboard {
@@ -115,15 +170,23 @@ export interface Leaderboard {
   generatedAt: number;
   /** Wallets with at least one v2 receipt. */
   wallets: number;
-  /** Eligible wallets only (≥ 24h calls, N ≥ 10, ≥ 3 UTC days, Seeker Genesis Token). */
+  /** Eligible wallets only (≥ 24h calls, N ≥ 10, ≥ 3 UTC days, Seeker Genesis Token or SKR ≥ gate). */
   overall: LeaderboardRow[];
-  /** Genesis holders with at least one scored SKR Daily call, over SKR Daily calls only. */
+  /** Genesis or SKR holders with at least one scored SKR Daily call, over SKR Daily calls only. */
   skrDaily: LeaderboardRow[];
+  /** "Most tipped": top recipients of SKR tips (any wallet, receipts not required). */
+  appreciated: AppreciatedRow[];
 }
 
 const SCORED: ReadonlySet<StatusV2> = new Set(["hit", "miss", "forfeited", "overlap"]);
 
-function row(wallet: string, receipts: readonly ReceiptV2[], all: readonly ReceiptV2[], nowSec: number) {
+function row(
+  wallet: string,
+  receipts: readonly ReceiptV2[],
+  all: readonly ReceiptV2[],
+  nowSec: number,
+  tipsSkr: number,
+): LeaderboardRow {
   const s = statsV2(receipts, nowSec, { leaderboard: true });
   const days = new Set(
     receipts.filter((r) => r.horizon !== "1h" && SCORED.has(statusOfV2(r, nowSec))).map((r) => utcDay(r.commit.blockTime)),
@@ -141,6 +204,7 @@ function row(wallet: string, receipts: readonly ReceiptV2[], all: readonly Recei
     voids: s.voids,
     days: days.size,
     streak: streak(all, nowSec),
+    tipsSkr,
   };
 }
 
@@ -154,14 +218,25 @@ function ranked(rows: LeaderboardRow[]): LeaderboardRow[] {
   return rows;
 }
 
-export function buildLeaderboard(entries: readonly WalletEntry[], nowSec: number): Leaderboard {
+/** `tips`: tipTotals of the registry txs (src/core/tips.ts); missing = no tips. */
+export function buildLeaderboard(
+  entries: readonly WalletEntry[],
+  nowSec: number,
+  tips: ReadonlyMap<string, TipTotal> = new Map(),
+): Leaderboard {
   const overall: LeaderboardRow[] = [];
   const skrDaily: LeaderboardRow[] = [];
   for (const e of entries) {
-    if (eligibility(e.receipts, nowSec, e.hasGenesis).eligible) overall.push(row(e.wallet, e.receipts, e.receipts, nowSec));
-    if (!e.hasGenesis) continue;
-    const daily = row(e.wallet, e.receipts.filter(isSkrDaily), e.receipts, nowSec);
-    if (daily.n > 0) skrDaily.push(daily);
+    const tipped = tips.get(e.wallet)?.tipsSkr ?? 0;
+    const holder = e.skrHolder === true;
+    if (eligibility(e.receipts, nowSec, e.hasGenesis, holder).eligible)
+      overall.push(row(e.wallet, e.receipts, e.receipts, nowSec, tipped));
+    if (!e.hasGenesis && !holder) continue;
+    const daily = row(e.wallet, e.receipts.filter(isSkrDaily), e.receipts, nowSec, tipped);
+    if (daily.n === 0) continue;
+    daily.streak = skrDailyStreak(e.receipts, nowSec);
+    daily.bestStreak = bestSkrDailyStreak(e.receipts, nowSec);
+    skrDaily.push(daily);
   }
   return {
     version: LEADERBOARD_VERSION,
@@ -169,6 +244,7 @@ export function buildLeaderboard(entries: readonly WalletEntry[], nowSec: number
     wallets: entries.length,
     overall: ranked(overall),
     skrDaily: ranked(skrDaily),
+    appreciated: mostAppreciated(tips),
   };
 }
 
@@ -195,12 +271,18 @@ export interface WalletProfile {
   generatedAt: number;
   wallet: string;
   hasGenesis: boolean;
+  /** SKR balance ≥ SKR_GATE_MIN at generation time. */
+  skrHolder: boolean;
   /** Personal stats (1h practice included). */
   stats: StatsV2;
   /** Leaderboard stats (1h practice excluded). */
   leaderboardStats: StatsV2;
   eligibility: Eligibility;
   streak: number;
+  skrDailyStreak: number;
+  bestSkrDailyStreak: number;
+  /** Received SKR tips. */
+  tips: { tipsSkr: number; tippers: number; tipsCount: number };
   /** Newest commit first. */
   receipts: ProfileReceipt[];
 }
@@ -210,17 +292,24 @@ export function walletProfile(
   receipts: readonly ReceiptV2[],
   hasGenesis: boolean,
   nowSec: number,
+  extra: { skrHolder?: boolean; tips?: TipTotal } = {},
 ): WalletProfile {
   const sorted = [...receipts].sort((a, b) => b.commit.blockTime - a.commit.blockTime);
+  const skrHolder = extra.skrHolder === true;
+  const t = extra.tips;
   return {
     version: LEADERBOARD_VERSION,
     generatedAt: nowSec,
     wallet,
     hasGenesis,
+    skrHolder,
     stats: statsV2(sorted, nowSec),
     leaderboardStats: statsV2(sorted, nowSec, { leaderboard: true }),
-    eligibility: eligibility(sorted, nowSec, hasGenesis),
+    eligibility: eligibility(sorted, nowSec, hasGenesis, skrHolder),
     streak: streak(sorted, nowSec),
+    skrDailyStreak: skrDailyStreak(sorted, nowSec),
+    bestSkrDailyStreak: bestSkrDailyStreak(sorted, nowSec),
+    tips: { tipsSkr: t?.tipsSkr ?? 0, tippers: t?.tippers ?? 0, tipsCount: t?.tipsCount ?? 0 },
     receipts: sorted.map((r) => ({
       hash: r.hash,
       asset: r.asset,

@@ -10,6 +10,7 @@ import type {
 } from "@solana/web3.js";
 import type { MemoTx } from "../core/history";
 import { MEMO_PREFIX, MEMO_PREFIX_V2, REGISTRY } from "../core/memo";
+import { parseTipMemo } from "../core/tip";
 import { REGISTRY_KEY } from "./memoTx";
 
 /** The two Connection methods history reading needs (injected so tests can mock them). */
@@ -90,26 +91,80 @@ export function registryTagSources(tx: ParsedTransactionWithMeta): string[] {
   return sources;
 }
 
+type TipTransfer = NonNullable<MemoTx["tip"]>;
+
+const TOKEN_PROGRAMS = new Set(["spl-token", "spl-token-2022"]);
+
+interface TokenBalance {
+  accountIndex: number;
+  mint: string;
+  owner?: string;
+  uiTokenAmount: { decimals: number };
+}
+
+/** Whole-token amount from a base-unit string; null when malformed. */
+function wholeAmount(amount: unknown, decimals: unknown): number | null {
+  if (typeof amount !== "string" || !/^\d+$/.test(amount) || typeof decimals !== "number") return null;
+  return Number(amount) / 10 ** decimals;
+}
+
+/**
+ * SPL token `transferChecked` / `transfer` instructions of a tx (top-level and inner) as
+ * { mint, from: authority, to: owner of the destination token account, amount in whole tokens }.
+ * Owner (and, for plain `transfer`, mint + decimals) come from the tx's post/pre token balances;
+ * transfers whose destination owner is unknown are skipped.
+ */
+export function tipTransfers(tx: ParsedTransactionWithMeta): TipTransfer[] {
+  const keys = tx.transaction.message.accountKeys.map((k) => k.pubkey.toString());
+  const balances = new Map<string, TokenBalance>();
+  for (const b of [...(tx.meta?.preTokenBalances ?? []), ...(tx.meta?.postTokenBalances ?? [])] as TokenBalance[]) {
+    const key = keys[b.accountIndex];
+    if (key && b.owner) balances.set(key, b);
+  }
+  const out: TipTransfer[] = [];
+  for (const ix of allInstructions(tx)) {
+    if (!("program" in ix) || !TOKEN_PROGRAMS.has(ix.program)) continue;
+    const p = ix.parsed as { type?: unknown; info?: Record<string, any> } | null;
+    const info = p?.info;
+    if (!info || (p.type !== "transferChecked" && p.type !== "transfer")) continue;
+    const from = info.authority ?? info.multisigAuthority;
+    const dest = typeof info.destination === "string" ? balances.get(info.destination) : undefined;
+    if (typeof from !== "string" || !dest?.owner) continue;
+    const checked = p.type === "transferChecked";
+    const mint = checked ? info.mint : dest.mint;
+    const amount = checked
+      ? wholeAmount(info.tokenAmount?.amount, info.tokenAmount?.decimals)
+      : wholeAmount(info.amount, dest.uiTokenAmount.decimals);
+    if (typeof mint !== "string" || mint !== dest.mint || amount === null) continue;
+    out.push({ mint, from, to: dest.owner, amount });
+  }
+  return out;
+}
+
 const isSigner = (tx: ParsedTransactionWithMeta, wallet: string) =>
   tx.transaction.message.accountKeys.some((k) => k.signer && k.pubkey.toString() === wallet);
 
 /**
  * `rcpt:1:`/`rcpt:2:` memos of one tx as buildReceipts input; empty unless `wallet` signed the tx.
- * `tagged` = the tx carries a registry tag paid by `wallet`.
+ * `tagged` = the tx carries a registry tag paid by `wallet`. A `rcpt:2:t:<R>` memo gets `tip` = the
+ * tx's token transfer from `wallet` to R, when there is one.
  */
 export function toMemoTxs(signature: string, tx: ParsedTransactionWithMeta, wallet: string): MemoTx[] {
   if (!isSigner(tx, wallet)) return [];
   const tagged = registryTagSources(tx).includes(wallet);
+  let transfers: TipTransfer[] | undefined;
   return extractMemos(tx)
     .filter((memo) => RCPT_PREFIXES.some((p) => memo.startsWith(p)))
-    .map((memo) => ({
-      signature,
-      blockTime: tx.blockTime ?? null,
-      signer: wallet,
-      memo,
-      failed: tx.meta?.err != null,
-      tagged,
-    }));
+    .map((memo) => {
+      const m: MemoTx = { signature, blockTime: tx.blockTime ?? null, signer: wallet, memo, failed: tx.meta?.err != null, tagged };
+      const recipient = parseTipMemo(memo);
+      if (recipient) {
+        transfers ??= tipTransfers(tx);
+        const tip = transfers.find((t) => t.from === wallet && t.to === recipient);
+        if (tip) m.tip = tip;
+      }
+      return m;
+    });
 }
 
 export interface FetchHistoryOptions {

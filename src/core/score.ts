@@ -211,10 +211,20 @@ export interface Eligibility {
   /** Distinct UTC days of the commits of those calls. */
   days: number;
   hasGenesis: boolean;
+  /** SKR balance ≥ SKR_GATE_MIN (src/core/tip.ts). */
+  skrHolder: boolean;
 }
 
-/** Leaderboard: N ≥ 10 resolved ≥ 24h calls, commits on ≥ 3 distinct UTC days, Seeker Genesis Token held. */
-export function eligibility(receipts: readonly AnyReceipt[], nowSec: number, hasGenesis: boolean): Eligibility {
+/**
+ * Leaderboard: N ≥ 10 resolved ≥ 24h calls, commits on ≥ 3 distinct UTC days, and a Seeker Genesis
+ * Token held or an SKR balance ≥ SKR_GATE_MIN.
+ */
+export function eligibility(
+  receipts: readonly AnyReceipt[],
+  nowSec: number,
+  hasGenesis: boolean,
+  skrHolder = false,
+): Eligibility {
   let n = 0;
   const days = new Set<number>();
   for (const r of receipts) {
@@ -223,10 +233,11 @@ export function eligibility(receipts: readonly AnyReceipt[], nowSec: number, has
     days.add(utcDay(r.commit.blockTime));
   }
   return {
-    eligible: n >= LEADERBOARD_MIN_N && days.size >= LEADERBOARD_MIN_DAYS && hasGenesis,
+    eligible: n >= LEADERBOARD_MIN_N && days.size >= LEADERBOARD_MIN_DAYS && (hasGenesis || skrHolder),
     n,
     days: days.size,
     hasGenesis,
+    skrHolder,
   };
 }
 

@@ -1,4 +1,16 @@
-import { SKR_DECIMALS, SKR_MINT, TIP_AMOUNTS, canTip, skrToBaseUnits } from "../tip";
+import {
+  SKR_DECIMALS,
+  SKR_GATE_MIN,
+  SKR_MINT,
+  TIP_AMOUNTS,
+  TIP_MEMO_PREFIX,
+  canTip,
+  isSkrHolder,
+  parseTipMemo,
+  skrBalanceOf,
+  skrToBaseUnits,
+  tipMemo,
+} from "../tip";
 
 describe("tip constants", () => {
   it("pins the SKR mint verified on mainnet (SPL Token, 6 decimals)", () => {
@@ -32,5 +44,54 @@ describe("canTip", () => {
     expect(canTip(a, a)).toBe(false);
     expect(canTip(null, b)).toBe(false);
     expect(canTip(undefined, b)).toBe(false);
+  });
+});
+
+describe("SKR balance gate", () => {
+  const acct = (mint: string, amount: string, decimals = 6) => ({
+    info: { mint, owner: "W", tokenAmount: { amount, decimals, uiAmount: Number(amount) / 10 ** decimals } },
+    type: "account",
+  });
+
+  it("is 100 whole SKR", () => {
+    expect(SKR_GATE_MIN).toBe(100);
+  });
+
+  it("sums every SKR token account in whole SKR, ignoring other mints and junk", () => {
+    expect(
+      skrBalanceOf([
+        acct(SKR_MINT, "60000000"),
+        acct(SKR_MINT, "40500000"),
+        acct("So11111111111111111111111111111111111111112", "999000000000"),
+        null,
+        { info: { mint: SKR_MINT, tokenAmount: { amount: "x", decimals: 6 } } },
+        { info: { mint: SKR_MINT, tokenAmount: { amount: "5", decimals: 9 } } },
+      ]),
+    ).toBeCloseTo(100.5);
+    expect(skrBalanceOf([])).toBe(0);
+  });
+
+  it("holder = balance ≥ SKR_GATE_MIN", () => {
+    expect(isSkrHolder(100)).toBe(true);
+    expect(isSkrHolder(99.999999)).toBe(false);
+    expect(isSkrHolder(skrBalanceOf([acct(SKR_MINT, "100000000")]))).toBe(true);
+  });
+});
+
+describe("tip memo", () => {
+  const R = "SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3";
+
+  it("is rcpt:2:t:<recipient>", () => {
+    expect(TIP_MEMO_PREFIX).toBe("rcpt:2:t:");
+    expect(tipMemo(R)).toBe(`rcpt:2:t:${R}`);
+    expect(parseTipMemo(tipMemo(R))).toBe(R);
+  });
+
+  it("rejects other memos and non-base58 recipients", () => {
+    expect(parseTipMemo("rcpt:2:c:abc")).toBeNull();
+    expect(parseTipMemo("rcpt:2:t:")).toBeNull();
+    expect(parseTipMemo("rcpt:2:t:0OIl")).toBeNull();
+    expect(parseTipMemo(`rcpt:2:t:${R} `)).toBeNull();
+    expect(() => tipMemo("not a key")).toThrow();
   });
 });

@@ -19,6 +19,11 @@ export interface MemoTx {
   failed: boolean;
   /** Tx account keys include REGISTRY (v2 indexing tag). Missing = untagged. */
   tagged?: boolean;
+  /**
+   * Only on `rcpt:2:t:` memos: the tx's SPL token transfer from the signer to the memo's recipient
+   * (amount in whole tokens, from the parsed instruction). Missing = no such transfer found.
+   */
+  tip?: { mint: string; from: string; to: string; amount: number };
 }
 
 type Dated<M> = M & { signature: string; blockTime: number };

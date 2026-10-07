@@ -2,6 +2,9 @@
 
 A Solana Mobile (Seeker) app for crypto price calls that **can't be cleaned up afterwards**.
 
+> **For judges — 60-second path:** install the APK from the [latest release](../../releases/latest) on a Seeker / Android phone → tap **Try demo (no wallet)** → open the receipt marked *awaiting reveal* → *Recover with wallet & reveal* → watch it print and stamp. Then **New** → seal a call → **⏩ +24h** in the yellow banner → reveal it. Everything in demo mode is simulated and labelled DEMO; live mode uses your real wallet on mainnet (a memo tx costs < $0.01).
+
+
 You call a direction: "SOL **up ▲** in 24 h". The app seals the call on Solana as a hash right away, so nobody can see your side yet. After the deadline you reveal it, and the call is scored against the market: the price when the commit landed (P0) vs. the price at the deadline (PT). **If you never reveal a call, it counts as a miss.** You can't delete misses, edit calls, or show only the wins. Your record comes straight from your wallet's on-chain history, and a public leaderboard ranks everyone with the same rules.
 
 - **No custom program.** Each step is one transaction with an [SPL Memo](https://spl.solana.com/memo) (`MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`) plus a **0-lamport** System transfer to the registry address `E5YRG7uSptKAd2T4WbMyK8xadyuZ8v132Ji6XhAxX5SJ`. The transfer moves no money; it only tags the transaction so that `getSignaturesForAddress(registry)` lists every Receipts call of every user. Nobody holds the registry's key.

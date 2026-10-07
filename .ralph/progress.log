@@ -53,3 +53,10 @@ dist/receipts-20261007-0004.apk
 [2026-10-07 10:24:21] iter 18/60 · open: 3 · next: T047 Apply the Night Register theme to every screen (New, Receipts/profile
 [2026-10-07 10:34:04] iter 19/60 · open: 2 · next: T042 README: v2 rules, anti-cheat section (hedging, overlap, sybil/Genesis
 [2026-10-07 10:36:21] iter 20/60 · open: 1 · next: T043 Release build, `adb install -r` if a device is connected, update the 
+[2026-10-07 10:39:03] no open tasks left — finished
+--- summary ---
+done:    40
+blocked: 2
+open:    0
+dist/receipts-20261007-1033.apk
+dist/receipts-20261007-1038.apk

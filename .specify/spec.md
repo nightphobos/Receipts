@@ -147,3 +147,33 @@ Reference mockups (3 screens): Design canvas "Receipts — стили экран
 - Motion sources, combined: (1) slow ambient drift — one tile width per 120 s / 60 s / 24 s; (2) **device tilt** via `expo-sensors` DeviceMotion (gamma/beta), low-pass filtered, ±4 / ±10 / ±18 px; (3) **scroll offset** of the screen's list, factors 0.1 / 0.25 / 0.5.
 - Snap offsets to whole device pixels of the pixel grid so art never blurs. Run on the UI thread (Reanimated shared values). Sensor at ~30 Hz, paused when the app is backgrounded. Disabled entirely (static layers) when the OS "reduce motion" setting is on.
 - The offset math is a pure function in `src/core/parallax.ts` (inputs: time, tilt, scroll, layer depth → x/y px, snapped) with unit tests.
+
+
+---
+
+# Demo mode (decided 2026-10-07 by the human)
+
+Purpose: a judge (or anyone without SOL) can see populated screens and play the whole loop — seal → time warp → reveal ceremony → stats/leaderboard — in under a minute. Honesty is the product, so demo data must be impossible to mistake for real records.
+
+## Architecture
+- One `DataSource` seam (React context, `src/data/`): `live` (current behaviour) and `demo`. Screens and hooks read receipts, prices, leaderboard, profiles, clock and the "send memo/tip" actions only through it — no `if (demo)` scattered in screens.
+- `demo` = an in-memory **simulated chain**: a list of `MemoTx` (same shape as real history) + a deterministic price table + a **demo clock** (`now = realNow + warpOffset`). All scoring, statuses, zσ, leaderboard and ceremony run through the real `src/core` functions on that data.
+- Writes in demo: Seal/Reveal append synthetic `MemoTx` (signature `DEMO…`, signer = demo wallet, tagged) instead of calling MWA; Tip shows "Demo — nothing sent". Never calls MWA, never signs, never touches the master key, never sends a transaction, no network needed.
+- Storage namespace `rcpt.demo.*` (AsyncStorage) for the demo session; "Reset demo" restores the seed. Real-mode storage/secrets are never read or written in demo.
+- Prices in demo: deterministic per-minute series per asset (seeded random walk around SOL 118, SKR 0.0167) from `src/core/demoData.ts`; the hint and P0/PT use it.
+
+## Seed dataset (`src/core/demoData.ts`, pure, seeded, test-covered)
+- Demo wallet `DEMOyou1111…` (clearly fake base58-looking string starting with `DEMO`) with ~27 resolved v2 calls over the last 10 days: hits, misses, 1 VOID, 2 forfeited, 1 overlap, 1 practice, plus 2 currently sealed (one 24h with ~5 h left, one SKR Daily) → streak > 0, eligible for the leaderboard.
+- ~12 other demo wallets `DEMO…` with varied records (some ineligible) for OVERALL and SKR DAILY tabs; some marked Seeker verified.
+- Unit tests assert the seed produces the intended stats (e.g. you are eligible, z within an expected range, at least one of each status).
+
+## Time warp
+- In demo only, the banner has **⏩ +1h** and **⏩ +24h** buttons that advance the demo clock; sealed calls become revealable, the ceremony plays with demo prices.
+
+## Guardrails (all required)
+- Persistent diagonal **DEMO** ribbon on every screen (top-right corner, gold on indigo) + a slim banner "DEMO DATA — not real records · Exit" under the top bar. Chekko shows a small "DEMO" sign.
+- No Solscan/explorer links for demo items (show "simulated" instead). Share texts start with `[DEMO — not a real record]` and contain no tx links.
+- Leaderboard/profile in demo show only demo wallets; live leaderboard is never mixed with demo rows.
+- Entry: first-run screen offers **Connect wallet** and **Try demo (no wallet)**; Settings has a Demo toggle + Reset demo. Exiting demo returns to live mode untouched.
+- Build flag `EXPO_PUBLIC_DEMO_MODE` (`allowed` default for the hackathon build; `off` compiles the entry points out for the dApp Store build).
+- The indexer and on-chain code never see demo data (it is never sent anywhere).

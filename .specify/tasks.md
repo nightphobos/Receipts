@@ -61,3 +61,9 @@ Legend: `- [ ]` open · `- [x]` done · `- [!]` blocked (reason in NOTES.md). Do
 - [x] T047 Apply the Night Register theme to every screen (New, Receipts/profile, Detail/Reveal ceremony, Leaderboard, read-only profile + tips, Settings), app icon + splash (pixel register on `#14122B`, no third-party art), remove template leftovers. Match the reference mockups. Bundle exports, release build OK.
 - [x] T042 README: v2 rules, anti-cheat section (hedging, overlap, sybil/Genesis, VOID, SKR median), how to verify a v2 receipt by hand, indexer/re-run instructions, human steps (create GitHub repo, push, enable Pages, set PYTH secret, set EXPO_PUBLIC_LEADERBOARD_URL).
 - [x] T043 Release build, `adb install -r` if a device is connected, update the morning summary at the top of NOTES.md (what to test on the phone: master-key determinism, seal, reveal on a reinstall, leaderboard, tip).
+
+
+## Phase 7 — Demo mode (added 2026-10-07 by the human; spec "Demo mode")
+- [ ] T048 `src/core/demoData.ts` + `demoClock`: seeded demo wallets, synthetic tagged v2 MemoTx history, deterministic per-minute price series, `applyDemoSeal/applyDemoReveal` (pure), test-first incl. the seed-stats assertions.
+- [ ] T049 `src/data/` DataSource seam: `live` adapter wrapping the existing hooks/actions, `demo` adapter over demoData (simulated chain, demo clock, `rcpt.demo.*` storage, no MWA/network). Refactor screens/hooks to read only via the seam; live behaviour unchanged (all existing tests green).
+- [ ] T050 Demo UX + guardrails: first-run choice (Connect wallet / Try demo), Settings toggle + Reset demo, DEMO ribbon + banner with ⏩ +1h / +24h, Chekko DEMO sign, no explorer links, `[DEMO — not a real record]` share prefix, `EXPO_PUBLIC_DEMO_MODE` flag. README "Demo mode" section (how judges use it). Release build + `adb install -r` if a device is connected; update the morning summary.

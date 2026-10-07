@@ -225,3 +225,6 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 
 ## T043 — done 2026-10-07
 - Prebuild (--no-install) + `assembleRelease` OK → `dist/receipts-20261007-1038.apk`; Seeker `<seeker-serial>` connected → `adb install -r` Success, launch smoke test OK (no FATAL). Morning summary at the top rewritten with the phone test list.
+
+## HUMAN — demo mode 2026-10-07
+- Add an isolated demo mode (spec "Demo mode"): DataSource seam, simulated chain + demo clock with time warp, strong DEMO guardrails. Tasks T048–T050.

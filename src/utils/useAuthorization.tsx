@@ -97,9 +97,12 @@ async function persistAuthorization(
   await AsyncStorage.setItem(AUTHORIZATION_STORAGE_KEY, JSON.stringify(auth));
 }
 
+// dApp identity shown by the wallet on connect/sign. Must be a domain we control:
+// wallets verify it against https://<domain>/.well-known/assetlinks.json (package + signing cert).
 export const APP_IDENTITY = {
   name: "Receipts",
-  uri: "https://fakedomain.com",
+  uri: process.env.EXPO_PUBLIC_APP_URI || "https://niph.info",
+  icon: "favicon.ico", // relative to uri
 };
 
 export function useAuthorization() {

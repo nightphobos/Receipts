@@ -24,3 +24,12 @@
 [2026-10-06 23:58:31] iter 23/60 · open: 3 · next: T018 README.md: what it is, the commit/reveal formula and how to verify a 
 [2026-10-06 23:59:49] iter 24/60 · open: 2 · next: T019 Final gate: `yarn test`, `yarn typecheck`, release build all green fr
 [2026-10-07 00:00:51] iter 25/60 · open: 1 · next: T020 Seeker verified badge: check Seeker Genesis Token (Token-2022 account
+[2026-10-07 00:05:09] no open tasks left — finished
+--- summary ---
+done:    23
+blocked: 1
+open:    0
+dist/receipts-20261006-2336.apk
+dist/receipts-20261006-2358.apk
+dist/receipts-20261007-0000.apk
+dist/receipts-20261007-0004.apk

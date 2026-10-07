@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.clockin.receipts",
+      "sha256_cert_fingerprints": [
+        "21:5D:21:AC:89:A9:3E:53:6E:0E:80:9C:85:CE:03:63:50:86:67:F8:CE:48:64:3D:71:27:15:06:3F:5D:E3:44"
+      ]
+    }
+  }
+]

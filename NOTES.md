@@ -153,3 +153,7 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 ## T031 — done 2026-10-07
 - Additive v2 API beside legacy v1 (v1 names unchanged, doc-marked legacy, so app/history keep compiling): `call.ts` `CallV2`/`DIRECTIONS_V2`/`isCallV2`/`validateCallV2`/`canonicalJsonV2`; `memo.ts` `MEMO_PREFIX_V2`, `REGISTRY`, `encode/decode{Commit,Reveal}MemoV2`, `decodeMemoV2`. v2 memo objects carry `v: 2` (v1 ones don't) for discrimination in T034.
 - Commit v2 decode requires asset ∈ ASSETS (uppercase); reveal v2 rejects v1 JSON and verifies hash. Fixed vector in `memoV2.test.ts` computed with shasum/base64. v1 decoders return null for `rcpt:2:` memos; `fetchHistory` still filters on `MEMO_PREFIX` (v1) — T035 must widen it.
+
+## T032 — done 2026-10-07
+- `src/core/secret.ts`: `MASTER_MESSAGE` (exact spec text), `masterFromSignature(sig64) → Uint8Array(32)` (= sha256; rejects non-64-byte/all-zero), `saltFor(master, asset, deadline)` (HMAC via `@noble/hashes/hmac`), `recoverCall(master, {hash, deadline, asset}, blockTime) → {call, json, salt} | null` scanning created ∈ [blockTime−900, blockTime] × {up, down}.
+- Fixed vector (sig = bytes 0..63) computed with Python hashlib/hmac in `secret.test.ts`. Master is raw bytes; secure-store persistence (hex) and the sign-twice determinism check belong to the app/chain layer (T035+).

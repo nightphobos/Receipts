@@ -50,3 +50,4 @@ dist/receipts-20261007-0004.apk
 [2026-10-07 10:14:08] iter 15/60 · open: 6 · next: T039 `scripts/indexer.ts` + `.github/workflows/indexer.yml` per spec; run 
 [2026-10-07 10:18:04] iter 16/60 · open: 5 · next: T040 App Leaderboard tab: overall (≥24h, eligible only) and SKR Daily tabs
 [2026-10-07 10:21:57] iter 17/60 · open: 4 · next: T041 SKR tips: verify SKR mint, tx builder (idempotent ATA + transfer), Ti
+[2026-10-07 10:24:21] iter 18/60 · open: 3 · next: T047 Apply the Night Register theme to every screen (New, Receipts/profile

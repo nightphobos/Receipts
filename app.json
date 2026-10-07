@@ -5,11 +5,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#111827"
+      "backgroundColor": "#14122B"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -21,7 +21,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#111827"
+        "backgroundColor": "#14122B"
       },
       "package": "com.clockin.receipts"
     },
@@ -31,6 +31,7 @@
     "plugins": [
       "expo-secure-store",
       "expo-font"
-    ]
+    ],
+    "backgroundColor": "#14122B"
   }
 }

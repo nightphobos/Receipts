@@ -5,19 +5,9 @@ import Svg, { Rect } from "react-native-svg";
 
 import { MASCOT_POSES, MASCOT_POSE_NAMES, mascotRuns, type MascotPixel, type MascotPose, type MascotRun } from "../core/mascot";
 import { PixelPanel } from "./PixelPanel";
-import { colors, fonts, space } from "./tokens";
+import { colors, fonts, mascotFill, space } from "./tokens";
 
-const FILL: Record<MascotPixel, string> = {
-  D: colors.sealedShadow,
-  B: colors.sealed,
-  S: "#123A2A",
-  E: colors.up,
-  G: colors.accent,
-  I: colors.ink,
-  P: colors.paper,
-  T: "#6EC8FF",
-  K: colors.accent,
-};
+const FILL: Record<MascotPixel, string> = mascotFill;
 
 const RUNS = Object.fromEntries(MASCOT_POSE_NAMES.map((n) => [n, mascotRuns(MASCOT_POSES[n])])) as Record<
   MascotPose,

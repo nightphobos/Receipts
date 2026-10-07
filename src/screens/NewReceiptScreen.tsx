@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from "react";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
-import { Button, Card, Chip, HelperText, SegmentedButtons, Text } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getRandomBytes } from "expo-crypto";
 import * as Haptics from "expo-haptics";
@@ -25,7 +24,20 @@ import { useConnection } from "../utils/ConnectionProvider";
 import { ConnectButton } from "../components/sign-in/sign-in-ui";
 import { alertAndLog } from "../utils/alertAndLog";
 import { showToast } from "../components/ui/toast";
-import { MascotDialog, useParallaxScroll } from "../theme";
+import {
+  Body,
+  Chip,
+  Heading,
+  MascotDialog,
+  Muted,
+  Num,
+  PixelButton,
+  PixelPanel,
+  Title,
+  colors,
+  space,
+  useParallaxScroll,
+} from "../theme";
 import { mascotLine } from "../core/mascot";
 
 const WARNED_KEY = "rcpt:warned-local-secrets";
@@ -65,31 +77,21 @@ function MasterKeyCard({ state, onSetup, busy }: { state: MasterState | null; on
   if (state?.mode === "derived") return null;
   if (state?.mode === "random")
     return (
-      <Card style={[styles.gap, styles.warnCard]}>
-        <Card.Content>
-          <Text variant="titleSmall">Secrets are stored only on this phone</Text>
-          <Text variant="bodySmall">
-            Your wallet signed the key message differently twice, so calls can't be recovered on another device.
-            Back up with Profile → Export secrets.
-          </Text>
-        </Card.Content>
-      </Card>
+      <PixelPanel title="SECRETS STAY ON THIS PHONE" style={styles.warnPanel}>
+        <Muted>
+          Your wallet signed the key message differently twice, so calls can't be recovered on another device.
+          Back up with My stats → Export secrets.
+        </Muted>
+      </PixelPanel>
     );
   return (
-    <Card style={styles.gap}>
-      <Card.Content>
-        <Text variant="titleSmall">Set up your receipt key</Text>
-        <Text variant="bodySmall">
-          Your wallet signs a fixed message (twice, to check it's deterministic). It hides your direction until you
-          reveal and lets you reveal from any phone. It cannot move funds.
-        </Text>
-      </Card.Content>
-      <Card.Actions>
-        <Button icon="key" onPress={onSetup} loading={busy} disabled={busy}>
-          Sign to set up
-        </Button>
-      </Card.Actions>
-    </Card>
+    <PixelPanel title="SET UP YOUR RECEIPT KEY">
+      <Muted>
+        Your wallet signs a fixed message (twice, to check it's deterministic). It hides your direction until you
+        reveal and lets you reveal from any phone. It cannot move funds.
+      </Muted>
+      <PixelButton label={busy ? "Signing…" : "Sign to set up"} variant="ghost" onPress={onSetup} disabled={busy} />
+    </PixelPanel>
   );
 }
 
@@ -184,20 +186,17 @@ export function NewReceiptScreen() {
   if (!selectedAccount) {
     return (
       <View style={styles.screenContainer}>
-        <Text variant="titleLarge">Seal a call</Text>
-        <Text style={styles.gap}>Connect your wallet to seal a price call on Solana.</Text>
-        <View style={styles.gap}>
-          <ConnectButton />
-        </View>
+        <Title>SEAL A CALL</Title>
+        <MascotDialog pose="idle" text="Connect your wallet and I'll print your first receipt." />
+        <ConnectButton />
       </View>
     );
   }
 
   return (
     <ScrollView {...parallaxScroll} contentContainerStyle={styles.screenContainer}>
-      <Text variant="titleLarge">Seal a call</Text>
+      <Title>SEAL A CALL</Title>
       <MascotDialog
-        style={styles.gap}
         pose={sealing ? "eat" : "idle"}
         text={mascotLine(sealing ? "eat" : "idle", { asset, horizon })}
       />
@@ -205,105 +204,100 @@ export function NewReceiptScreen() {
         <MasterKeyCard state={masterKey.state} onSetup={setupMaster} busy={settingUp} />
       )}
 
-      <Text variant="labelLarge" style={styles.label}>Asset</Text>
-      <SegmentedButtons
-        value={asset}
-        onValueChange={(v) => setAsset(v as Asset)}
-        buttons={ASSETS.map((a) => ({ value: a, label: a, disabled: horizon === "skr-daily" && a !== "SKR" }))}
-      />
-      <View style={styles.hintRow}>
-        <HelperText type="info" visible>
-          {price.isLoading
-            ? `Loading ${priceName} price…`
-            : price.data
-              ? `${priceName} ${asset}/${quote} now: ${formatUsd(price.data.price)}`
-              : `${priceName} price unavailable`}
-        </HelperText>
-        {demo && <DemoBadge />}
-      </View>
+      <PixelPanel>
+        <Heading>ASSET</Heading>
+        <View style={styles.chips}>
+          {ASSETS.map((a) => (
+            <Chip
+              key={a}
+              label={a}
+              icon={a === "SKR" ? "coin" : undefined}
+              selected={asset === a}
+              disabled={horizon === "skr-daily" && a !== "SKR"}
+              onPress={() => setAsset(a)}
+            />
+          ))}
+        </View>
+        <View style={styles.priceRow}>
+          <Muted>{`${priceName} ${asset}/${quote} now`}</Muted>
+          {demo && <DemoBadge />}
+        </View>
+        <Num style={styles.price}>
+          {price.isLoading ? "…" : price.data ? `$${formatUsd(price.data.price)}` : "unavailable"}
+        </Num>
+      </PixelPanel>
 
-      <Text variant="labelLarge" style={styles.label}>At the deadline the price will be</Text>
+      <Heading style={styles.label}>AT THE DEADLINE THE PRICE WILL BE</Heading>
       <View style={styles.dirRow}>
-        <Button
-          mode={dir === "up" ? "contained" : "outlined"}
-          buttonColor={dir === "up" ? "#1E9E5A" : undefined}
+        <PixelButton
+          label="▲ UP"
+          big
+          variant={dir === "up" ? "up" : "upOutline"}
           style={styles.dirButton}
-          contentStyle={styles.dirContent}
-          labelStyle={styles.dirLabel}
           onPress={() => setDir("up")}
-        >
-          ▲ Up
-        </Button>
-        <Button
-          mode={dir === "down" ? "contained" : "outlined"}
-          buttonColor={dir === "down" ? "#D03B3B" : undefined}
+          accessibilityLabel="Up"
+        />
+        <PixelButton
+          label="▼ DOWN"
+          big
+          variant={dir === "down" ? "downSolid" : "down"}
           style={styles.dirButton}
-          contentStyle={styles.dirContent}
-          labelStyle={styles.dirLabel}
           onPress={() => setDir("down")}
-        >
-          ▼ Down
-        </Button>
+          accessibilityLabel="Down"
+        />
       </View>
-      <Text variant="bodySmall" style={styles.muted}>
-        Compared with the price one minute after your seal lands on chain.
-      </Text>
+      <Muted>Compared with the price one minute after your seal lands on chain.</Muted>
 
-      <Text variant="labelLarge" style={styles.label}>Horizon</Text>
+      <Heading style={styles.label}>HORIZON</Heading>
       <View style={styles.chips}>
         {HORIZON_CHOICES.map((h) => (
-          <Chip key={h.value} selected={horizon === h.value} showSelectedOverlay onPress={() => setHorizon(h.value)}>
-            {h.label}
-          </Chip>
+          <Chip
+            key={h.value}
+            label={h.label}
+            icon={h.value === "skr-daily" ? "coin" : undefined}
+            selected={horizon === h.value}
+            onPress={() => setHorizon(h.value)}
+          />
         ))}
       </View>
-      <HelperText type="info" visible>
-        {`Deadline: ${new Date(deadlineSec * 1000).toLocaleString()}`}
-      </HelperText>
-      {horizon === "1h" && (
-        <HelperText type="info" visible>
-          Practice: counts in your stats, never on the leaderboard.
-        </HelperText>
-      )}
-      {horizon === "skr-daily" && (
-        <HelperText type="info" visible>
-          SKR Daily: everybody's daily SKR call ends at the same 12:00 UTC.
-        </HelperText>
-      )}
+      <View style={styles.deadline}>
+        <Muted>DEADLINE</Muted>
+        <Num>{new Date(deadlineSec * 1000).toLocaleString()}</Num>
+      </View>
+      {horizon === "1h" && <Muted>Practice: counts in your stats, never on the leaderboard.</Muted>}
+      {horizon === "skr-daily" && <Muted>SKR Daily: everybody's daily SKR call ends at the same 12:00 UTC.</Muted>}
       {open && (
-        <HelperText type="error" visible>
+        <Body style={styles.error}>
           {`You already have an open ${asset} call in this horizon. A second one now would count as a miss — wait for its deadline.`}
-        </HelperText>
+        </Body>
       )}
 
-      <Button
+      <PixelButton
         style={styles.gap}
-        mode="contained"
+        label={sealing ? "SEALING…" : settingUp ? "SIGNING…" : "SEAL"}
         icon="lock"
+        big
         onPress={onSeal}
-        loading={sealing || settingUp}
         disabled={sealing || settingUp || dir === null || open || masterKey.isLoading}
-      >
-        Seal
-      </Button>
-      <Text variant="bodySmall" style={styles.gap}>
+      />
+      <Muted>
         Only a hash goes on chain now; your direction stays hidden. After the deadline you reveal it; if you don't
         within 24 h, it counts as a miss.
-      </Text>
+      </Muted>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  hintRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  screenContainer: { padding: 16 },
-  label: { marginTop: 16, marginBottom: 8 },
-  gap: { marginTop: 12 },
-  muted: { marginTop: 6, opacity: 0.7 },
-  warnCard: { backgroundColor: "#FFF4D6" },
-  dirRow: { flexDirection: "row", gap: 12 },
+  screenContainer: { padding: space.md, gap: space.md },
+  label: { marginTop: space.sm },
+  gap: { marginTop: space.sm },
+  warnPanel: { borderColor: colors.accent },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+  priceRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: space.xs },
+  price: { fontSize: 32, color: colors.accent },
+  dirRow: { flexDirection: "row", gap: space.md },
   dirButton: { flex: 1 },
-  dirContent: { height: 72 },
-  dirLabel: { fontSize: 22, fontWeight: "bold" },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  deadline: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
+  error: { color: colors.down },
 });

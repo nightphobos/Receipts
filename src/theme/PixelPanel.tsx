@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleProp, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from "react-native";
 
 import { colors, fonts, pixel, space } from "./tokens";
 
@@ -22,7 +22,33 @@ export function PixelPanel({ title, style, contentStyle, children }: PixelPanelP
   );
 }
 
+export type PixelCardProps = {
+  onPress?: () => void;
+  /** Gold border, e.g. your own row. */
+  highlight?: boolean;
+  style?: StyleProp<ViewStyle>;
+  accessibilityLabel?: string;
+  children?: React.ReactNode;
+};
+
+/** List row: surface fill, indigo border; pressed (or highlighted) = gold border. */
+export function PixelCard({ onPress, highlight, style, accessibilityLabel, children }: PixelCardProps) {
+  return (
+    <Pressable
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityLabel={accessibilityLabel}
+      disabled={!onPress}
+      onPress={onPress}
+      style={({ pressed }) => [styles.card, (pressed || highlight) && styles.cardActive, style]}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  card: { backgroundColor: colors.surface, borderWidth: pixel.border, borderColor: colors.border, padding: space.md, gap: space.xs },
+  cardActive: { borderColor: colors.accent },
   outer: { borderWidth: pixel.border, borderColor: colors.paper, backgroundColor: colors.surface },
   inner: { borderWidth: pixel.border, borderColor: colors.border, padding: space.md, gap: space.sm },
   title: { fontFamily: fonts.headingBold, fontSize: 16, color: colors.accent, letterSpacing: 1 },

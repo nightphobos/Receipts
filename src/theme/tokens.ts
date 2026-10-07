@@ -24,6 +24,19 @@ export const colors = {
   windows: ["#FFC94A", "#8C7BFF", "#3EE08F", "#FF5C7A"],
 } as const;
 
+/** Chekko pixel codes (src/core/mascot.ts) → colours; shared by the app and scripts/gen-icons.ts. */
+export const mascotFill = {
+  D: colors.sealedShadow,
+  B: colors.sealed,
+  S: "#123A2A",
+  E: colors.up,
+  G: colors.accent,
+  I: colors.ink,
+  P: colors.paper,
+  T: "#6EC8FF",
+  K: colors.accent,
+} as const;
+
 export const fonts = {
   heading: "PixelifySans_500Medium",
   headingBold: "PixelifySans_700Bold",

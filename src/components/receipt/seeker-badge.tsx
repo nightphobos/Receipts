@@ -1,17 +1,8 @@
 import React from "react";
-import { StyleSheet } from "react-native";
-import { Chip } from "react-native-paper";
+
+import { Badge, colors } from "../../theme";
 
 /** Shown in Profile when the connected wallet holds a Seeker Genesis Token. */
 export function SeekerBadge() {
-  return (
-    <Chip compact icon="check-decagram" style={styles.chip} textStyle={styles.text} selectedColor="#FFFFFF">
-      Seeker verified
-    </Chip>
-  );
+  return <Badge label="SEEKER VERIFIED" color={colors.sealed} />;
 }
-
-const styles = StyleSheet.create({
-  chip: { alignSelf: "flex-start", backgroundColor: "#7C3AED" },
-  text: { color: "#FFFFFF", fontWeight: "bold" },
-});

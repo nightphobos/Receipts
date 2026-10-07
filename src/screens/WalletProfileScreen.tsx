@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { FlatList, Linking, Pressable, RefreshControl, StyleSheet, View } from "react-native";
-import { ActivityIndicator, Button, Text } from "react-native-paper";
+import { Text } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import * as Haptics from "expo-haptics";
 import { PublicKey } from "@solana/web3.js";
@@ -21,7 +21,7 @@ import { useMobileWallet } from "../utils/useMobileWallet";
 import { useConnection } from "../utils/ConnectionProvider";
 import { alertAndLog } from "../utils/alertAndLog";
 import type { RootStackParamList } from "../navigators/AppNavigator";
-import { PixelButton, PixelPanel, StatusStamp, colors, fonts, space, useParallaxScroll } from "../theme";
+import { Loading, PixelButton, PixelPanel, StatusStamp, colors, fonts, space, useParallaxScroll } from "../theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "WalletProfile">;
 
@@ -146,7 +146,7 @@ export function WalletProfileScreen({ route }: Props) {
       keyExtractor={(r) => r.hash}
       contentContainerStyle={styles.container}
       ListHeaderComponent={header}
-      refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />}
+      refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={colors.accent} colors={[colors.accent]} progressBackgroundColor={colors.surface} />}
       renderItem={({ item }) => (
         <ReceiptLine
           r={item}
@@ -155,12 +155,12 @@ export function WalletProfileScreen({ route }: Props) {
       )}
       ListEmptyComponent={
         query.isLoading ? (
-          <ActivityIndicator style={styles.gap} />
+          <Loading style={styles.gap} />
         ) : query.isError ? (
           <PixelPanel>
             <Text style={styles.text}>Couldn't load this profile</Text>
             <Text style={styles.muted}>{query.error instanceof Error ? query.error.message : String(query.error)}</Text>
-            <Button onPress={() => query.refetch()}>Retry</Button>
+            <PixelButton label="Retry" variant="ghost" onPress={() => query.refetch()} />
           </PixelPanel>
         ) : (
           <PixelPanel>
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   container: { padding: space.md, gap: space.sm },
   header: { gap: space.sm, marginBottom: space.sm },
   wallet: { fontFamily: fonts.heading, fontSize: 14, color: colors.text },
-  sigma: { fontFamily: fonts.headingBold, fontSize: 24, color: colors.accent },
+  sigma: { fontFamily: fonts.number, fontSize: 36, color: colors.accent },
   receipt: {
     flexDirection: "row",
     alignItems: "center",
@@ -186,8 +186,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.border,
   },
-  text: { color: colors.text },
-  muted: { color: colors.textMuted, fontSize: 12 },
+  text: { fontFamily: fonts.body, fontSize: 14, color: colors.text },
+  muted: { fontFamily: fonts.body, color: colors.textMuted, fontSize: 12 },
   flex: { flex: 1 },
   tipRow: { flexDirection: "row", gap: space.sm, marginTop: space.sm },
   gap: { marginTop: space.lg },

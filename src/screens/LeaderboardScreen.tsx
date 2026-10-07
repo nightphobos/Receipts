@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
-import { ActivityIndicator, Button, Text } from "react-native-paper";
+import { Text } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 
 import { formatSigma } from "../core/ceremony";
@@ -10,7 +10,7 @@ import { LEADERBOARD_MIN_DAYS, LEADERBOARD_MIN_N } from "../core/score";
 import { LEADERBOARD_SOURCE, useLeaderboard } from "../hooks/useLeaderboard";
 import { useAuthorization } from "../utils/useAuthorization";
 import { ellipsify } from "../utils/ellipsify";
-import { Chip, PixelPanel, colors, fonts, space, useParallaxScroll } from "../theme";
+import { Chip, Loading, PixelButton, PixelPanel, Title, colors, fonts, space, useParallaxScroll } from "../theme";
 
 type Board = "overall" | "skrDaily";
 
@@ -45,6 +45,7 @@ export function LeaderboardScreen() {
 
   const header = (
     <View style={styles.header}>
+      <Title>RANK</Title>
       <View style={styles.tabs}>
         <Chip label="OVERALL" selected={board === "overall"} onPress={() => setBoard("overall")} />
         <Chip label="SKR DAILY" icon="coin" selected={board === "skrDaily"} onPress={() => setBoard("skrDaily")} />
@@ -71,23 +72,18 @@ export function LeaderboardScreen() {
       keyExtractor={(r) => r.wallet}
       contentContainerStyle={styles.container}
       ListHeaderComponent={header}
-      refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />}
+      refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={colors.accent} colors={[colors.accent]} progressBackgroundColor={colors.surface} />}
       renderItem={({ item }) => (
         <Row row={item} me={item.wallet === me} onPress={() => navigation.navigate("WalletProfile", { wallet: item.wallet })} />
       )}
       ListEmptyComponent={
         query.isLoading ? (
-          <View style={styles.center}>
-            <ActivityIndicator />
-            {LEADERBOARD_SOURCE === "registry" && (
-              <Text style={[styles.muted, styles.gap]}>Reading every Receipts call from the registry…</Text>
-            )}
-          </View>
+          <Loading caption={LEADERBOARD_SOURCE === "registry" ? "Reading every Receipts call from the registry…" : undefined} />
         ) : query.isError ? (
           <PixelPanel>
             <Text style={styles.text}>Couldn't load the leaderboard</Text>
             <Text style={styles.muted}>{query.error instanceof Error ? query.error.message : String(query.error)}</Text>
-            <Button onPress={() => query.refetch()}>Retry</Button>
+            <PixelButton label="Retry" variant="ghost" onPress={() => query.refetch()} />
           </PixelPanel>
         ) : (
           <PixelPanel>
@@ -113,12 +109,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   rowMe: { borderColor: colors.accent },
-  rank: { fontFamily: fonts.heading, fontSize: 18, color: colors.accent, minWidth: 40 },
+  rank: { fontFamily: fonts.number, fontSize: 28, color: colors.accent, minWidth: 44 },
   wallet: { fontFamily: fonts.heading, fontSize: 16, color: colors.text },
-  sigma: { fontFamily: fonts.heading, fontSize: 18, color: colors.text },
-  text: { color: colors.text },
-  muted: { color: colors.textMuted, fontSize: 12 },
+  sigma: { fontFamily: fonts.number, fontSize: 24, color: colors.text },
+  text: { fontFamily: fonts.body, fontSize: 14, color: colors.text },
+  muted: { fontFamily: fonts.body, color: colors.textMuted, fontSize: 12 },
   flex: { flex: 1 },
-  center: { alignItems: "center", padding: space.lg },
   gap: { marginTop: space.sm },
 });

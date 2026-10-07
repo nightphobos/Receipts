@@ -6,12 +6,15 @@ import { PixelIcon, PixelIconName } from "./icons";
 import { PixelBox } from "./PixelBox";
 import { colors, fonts, pixel, space } from "./tokens";
 
-export type PixelButtonVariant = "gold" | "up" | "down" | "ghost";
+/** up/down = picked direction (solid); upOutline/down = not picked (outlined). */
+export type PixelButtonVariant = "gold" | "up" | "upOutline" | "down" | "downSolid" | "ghost";
 
 const VARIANTS: Record<PixelButtonVariant, { fill: string; border: string; shadow?: string; text: string }> = {
   gold: { fill: colors.accent, border: colors.accentShadow, shadow: colors.accentShadow, text: colors.ink },
   up: { fill: colors.up, border: colors.upShadow, shadow: colors.upShadow, text: colors.ink },
+  upOutline: { fill: colors.bg, border: colors.up, shadow: colors.upShadow, text: colors.up },
   down: { fill: colors.bg, border: colors.down, shadow: colors.downShadow, text: colors.down },
+  downSolid: { fill: colors.down, border: colors.downShadow, shadow: colors.downShadow, text: colors.ink },
   ghost: { fill: "transparent", border: colors.border, text: colors.text },
 };
 

@@ -1,6 +1,5 @@
 import React from "react";
 import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
-import { ActivityIndicator, Button, Card, Text } from "react-native-paper";
 import { useNavigation, type CompositeNavigationProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -13,12 +12,25 @@ import { useReceipts, useReceiptsV2, type ReceiptRow, type ReceiptRowV2 } from "
 import { useNowSec } from "../hooks/useNow";
 import { usePriceSource } from "../hooks/usePriceSource";
 import { DemoBadge } from "../components/receipt/demo-badge";
-import { StatusChip } from "../components/receipt/status-chip";
 import { ConnectButton } from "../components/sign-in/sign-in-ui";
 import { useAuthorization } from "../utils/useAuthorization";
 import type { RootStackParamList } from "../navigators/AppNavigator";
 import type { HomeTabParamList } from "../navigators/HomeNavigator";
-import { useParallaxScroll } from "../theme";
+import {
+  Body,
+  Heading,
+  Loading,
+  MascotDialog,
+  Muted,
+  PixelButton,
+  PixelCard,
+  PixelPanel,
+  StatusStamp,
+  Title,
+  colors,
+  space,
+  useParallaxScroll,
+} from "../theme";
 
 type Nav = CompositeNavigationProp<
   BottomTabNavigationProp<HomeTabParamList, "Home">,
@@ -53,25 +65,16 @@ function ReceiptItem({ row, now, onPress }: { row: ReceiptRow; now: number; onPr
   const demo = row.call !== null && isDemo(priceSource, row.call.asset);
   const src: PriceSourceKind = row.call !== null ? priceSource.kindOf(row.call.asset) : "pyth";
   return (
-    <Card style={styles.card} onPress={onPress}>
-      <Card.Content>
-        <View style={styles.row}>
-          <Text variant="titleMedium" style={styles.title}>
-            {row.call ? describeCall(row.call) : "Hidden call"}
-          </Text>
-          <StatusChip status={status} />
-        </View>
-        {demo && (status === "hit" || status === "miss") && (
-          <View style={styles.gapSmall}>
-            <DemoBadge />
-          </View>
-        )}
-        <Text variant="bodyMedium" style={styles.gapSmall}>{statusLine(row, status, now, src)}</Text>
-        <Text variant="bodySmall" style={styles.muted}>
-          {`Deadline ${new Date(row.receipt.deadline * 1000).toLocaleString()}`}
-        </Text>
-      </Card.Content>
-    </Card>
+    <PixelCard style={styles.card} onPress={onPress}>
+      <View style={styles.row}>
+        <Heading style={styles.title}>{row.call ? describeCall(row.call) : "Hidden call"}</Heading>
+        <StatusStamp status={status} tilt={false} />
+      </View>
+      <Muted>LEGACY v1</Muted>
+      {demo && (status === "hit" || status === "miss") && <DemoBadge />}
+      <Body>{statusLine(row, status, now, src)}</Body>
+      <Muted>{`Deadline ${new Date(row.receipt.deadline * 1000).toLocaleString()}`}</Muted>
+    </PixelCard>
   );
 }
 
@@ -108,25 +111,21 @@ function ReceiptItemV2({ row, now, onPress }: { row: ReceiptRowV2; now: number; 
   const demo = isDemo(priceSource, row.receipt.asset);
   const horizon = row.receipt.horizon === "1h" ? "1h practice" : row.receipt.horizon;
   return (
-    <Card style={styles.card} onPress={onPress}>
-      <Card.Content>
-        <View style={styles.row}>
-          <Text variant="titleMedium" style={styles.title}>
-            {`${row.call ? describeCallV2(row.call) : `${row.receipt.asset} · hidden`} · ${horizon}`}
-          </Text>
-          <StatusChip status={status} />
-        </View>
-        {demo && (status === "hit" || status === "miss" || status === "void") && (
-          <View style={styles.gapSmall}>
-            <DemoBadge />
-          </View>
-        )}
-        <Text variant="bodyMedium" style={styles.gapSmall}>{statusLineV2(row, status, now)}</Text>
-        <Text variant="bodySmall" style={styles.muted}>
-          {`Deadline ${new Date(row.receipt.deadline * 1000).toLocaleString()}`}
-        </Text>
-      </Card.Content>
-    </Card>
+    <PixelCard style={styles.card} onPress={onPress}>
+      <View style={styles.row}>
+        <Heading style={styles.title}>
+          {`$${row.call ? describeCallV2(row.call) : row.receipt.asset} · ${horizon}`}
+        </Heading>
+        <StatusStamp
+          status={status}
+          tilt={false}
+          countdown={status === "sealed" ? formatCountdown(row.receipt.deadline - now) : undefined}
+        />
+      </View>
+      {demo && (status === "hit" || status === "miss" || status === "void") && <DemoBadge />}
+      <Body>{statusLineV2(row, status, now)}</Body>
+      <Muted>{`Deadline ${new Date(row.receipt.deadline * 1000).toLocaleString()}`}</Muted>
+    </PixelCard>
   );
 }
 
@@ -157,14 +156,15 @@ export function ReceiptsListScreen() {
   if (!selectedAccount) {
     return (
       <View style={styles.screenContainer}>
-        <Text variant="displaySmall" style={styles.bold}>Receipts</Text>
-        <Text style={styles.gap}>
-          Seal crypto price calls on Solana now, reveal them after the deadline, and get scored against Pyth.
-          Unrevealed calls count as misses — your hit-rate can't be cleaned up.
-        </Text>
-        <View style={styles.gap}>
-          <ConnectButton />
-        </View>
+        <Title>RECEIPTS</Title>
+        <MascotDialog pose="print" text="Seal a price call now, reveal it after the deadline. Hide it and it counts as a miss." />
+        <PixelPanel>
+          <Body>
+            Seal crypto price calls on Solana now, reveal them after the deadline, and get scored against Pyth.
+            Unrevealed calls count as misses — your hit-rate can't be cleaned up.
+          </Body>
+        </PixelPanel>
+        <ConnectButton />
       </View>
     );
   }
@@ -172,8 +172,7 @@ export function ReceiptsListScreen() {
   if (receipts.isLoading) {
     return (
       <View style={[styles.screenContainer, styles.center]}>
-        <ActivityIndicator />
-        <Text style={styles.gap}>Reading your receipts from chain…</Text>
+        <Loading caption="Reading your receipts from chain…" />
       </View>
     );
   }
@@ -197,36 +196,33 @@ export function ReceiptsListScreen() {
         );
       }}
       refreshControl={
-        <RefreshControl refreshing={receipts.isRefetching} onRefresh={() => receipts.refetch()} />
+        <RefreshControl
+          refreshing={receipts.isRefetching}
+          onRefresh={() => receipts.refetch()}
+          tintColor={colors.accent}
+          colors={[colors.accent]}
+          progressBackgroundColor={colors.surface}
+        />
       }
       ListHeaderComponent={
-        <>
-          <Button style={styles.statsButton} icon="chart-bar" onPress={() => navigation.navigate("Profile")}>
-            My stats
-          </Button>
+        <View style={styles.header}>
+          <View style={styles.row}>
+            <Title>RECEIPTS</Title>
+            <PixelButton label="MY STATS" icon="trophy" variant="ghost" onPress={() => navigation.navigate("Profile")} />
+          </View>
           {receipts.isError ? (
-            <Card style={styles.card}>
-              <Card.Content>
-                <Text variant="titleSmall">Couldn't load receipts</Text>
-                <Text variant="bodySmall">
-                  {receipts.error instanceof Error ? receipts.error.message : String(receipts.error)}
-                </Text>
-              </Card.Content>
-              <Card.Actions>
-                <Button onPress={() => receipts.refetch()}>Retry</Button>
-              </Card.Actions>
-            </Card>
+            <PixelPanel title="COULDN'T LOAD RECEIPTS">
+              <Muted>{receipts.error instanceof Error ? receipts.error.message : String(receipts.error)}</Muted>
+              <PixelButton label="Retry" variant="ghost" onPress={() => receipts.refetch()} />
+            </PixelPanel>
           ) : null}
-        </>
+        </View>
       }
       ListEmptyComponent={
         receipts.isError ? null : (
-          <View style={styles.center}>
-            <Text variant="titleMedium" style={styles.gap}>No receipts yet</Text>
-            <Text style={styles.gapSmall}>Seal your first price call. Pull down to refresh.</Text>
-            <Button style={styles.gap} mode="contained" icon="lock-plus" onPress={() => navigation.navigate("New")}>
-              Seal a call
-            </Button>
+          <View style={styles.empty}>
+            <MascotDialog pose="idle" text="No receipts yet. Feed me your first price call! Pull down to refresh." />
+            <PixelButton label="SEAL A CALL" icon="lock" big onPress={() => navigation.navigate("New")} />
           </View>
         )
       }
@@ -235,15 +231,12 @@ export function ReceiptsListScreen() {
 }
 
 const styles = StyleSheet.create({
-  screenContainer: { padding: 16, flex: 1 },
-  list: { padding: 16, flexGrow: 1 },
+  screenContainer: { padding: space.md, flex: 1, gap: space.md },
+  list: { padding: space.md, flexGrow: 1 },
   center: { alignItems: "center", justifyContent: "center" },
-  card: { marginBottom: 12 },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  title: { flex: 1, marginRight: 8 },
-  bold: { fontWeight: "bold" },
-  gap: { marginTop: 12 },
-  gapSmall: { marginTop: 6 },
-  muted: { marginTop: 2, opacity: 0.7 },
-  statsButton: { alignSelf: "flex-end", marginBottom: 8 },
+  header: { gap: space.sm, marginBottom: space.md },
+  card: { marginBottom: space.sm },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.sm },
+  title: { flex: 1 },
+  empty: { gap: space.md },
 });

@@ -1,13 +1,14 @@
-import { Button, IconButton, Menu, useTheme } from "react-native-paper";
-import { Account, useAuthorization } from "../../utils/useAuthorization";
-import { useMobileWallet } from "../../utils/useMobileWallet";
-import { useNavigation } from "@react-navigation/native";
-import { ellipsify } from "../../utils/ellipsify";
+import { Menu } from "react-native-paper";
 import { useState } from "react";
 import * as Clipboard from "expo-clipboard";
 import { Linking } from "react-native";
+
+import { Account, useAuthorization } from "../../utils/useAuthorization";
+import { useMobileWallet } from "../../utils/useMobileWallet";
+import { ellipsify } from "../../utils/ellipsify";
 import { useCluster } from "../cluster/cluster-data-access";
 import { showErrorToast } from "../ui/toast";
+import { Chip, colors, fonts } from "../../theme";
 
 export function TopBarWalletButton({
   selectedAccount,
@@ -18,32 +19,14 @@ export function TopBarWalletButton({
 }) {
   const { connect } = useMobileWallet();
   return (
-    <Button
-      icon="wallet"
-      mode="contained-tonal"
-      style={{ alignSelf: "center" }}
+    <Chip
+      label={selectedAccount ? ellipsify(selectedAccount.publicKey.toBase58()) : "CONNECT"}
+      selected={!selectedAccount}
       onPress={
         selectedAccount
           ? openMenu
           : () => connect().catch((e) => showErrorToast("Wallet connect failed", e))
       }
-    >
-      {selectedAccount
-        ? ellipsify(selectedAccount.publicKey.toBase58())
-        : "Connect"}
-    </Button>
-  );
-}
-
-export function TopBarSettingsButton() {
-  const navigation = useNavigation();
-  return (
-    <IconButton
-      icon="cog"
-      mode="contained-tonal"
-      onPress={() => {
-        navigation.navigate("Settings");
-      }}
     />
   );
 }
@@ -65,35 +48,21 @@ export function TopBarWalletMenu() {
 
   const viewExplorer = () => {
     if (selectedAccount) {
-      const explorerUrl = getExplorerUrl(
-        `account/${selectedAccount.publicKey.toBase58()}`
-      );
-      Linking.openURL(explorerUrl);
+      Linking.openURL(getExplorerUrl(`account/${selectedAccount.publicKey.toBase58()}`));
     }
     closeMenu();
   };
 
+  const itemStyle = { fontFamily: fonts.heading, color: colors.text };
   return (
     <Menu
       visible={visible}
       onDismiss={closeMenu}
-      anchor={
-        <TopBarWalletButton
-          selectedAccount={selectedAccount}
-          openMenu={openMenu}
-        />
-      }
+      contentStyle={{ backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.paper, borderRadius: 0 }}
+      anchor={<TopBarWalletButton selectedAccount={selectedAccount} openMenu={openMenu} />}
     >
-      <Menu.Item
-        onPress={copyAddressToClipboard}
-        title="Copy address"
-        leadingIcon="content-copy"
-      />
-      <Menu.Item
-        onPress={viewExplorer}
-        title="View Explorer"
-        leadingIcon="open-in-new"
-      />
+      <Menu.Item onPress={copyAddressToClipboard} title="▶ Copy address" titleStyle={itemStyle} />
+      <Menu.Item onPress={viewExplorer} title="▶ View on explorer" titleStyle={itemStyle} />
       <Menu.Item
         onPress={async () => {
           closeMenu();
@@ -103,8 +72,8 @@ export function TopBarWalletMenu() {
             showErrorToast("Disconnect failed", e);
           }
         }}
-        title="Disconnect"
-        leadingIcon="link-off"
+        title="▶ Disconnect"
+        titleStyle={{ ...itemStyle, color: colors.down }}
       />
     </Menu>
   );

@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from "react";
 import { Linking, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { ActivityIndicator, Button, Card, Divider, Text } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,7 +15,6 @@ import { ReceiptDetailV2 } from "./ReceiptDetailV2";
 import { useNowSec } from "../hooks/useNow";
 import { usePriceSource } from "../hooks/usePriceSource";
 import { DemoBadge } from "../components/receipt/demo-badge";
-import { StatusChip } from "../components/receipt/status-chip";
 import { useCluster } from "../components/cluster/cluster-data-access";
 import { useAuthorization } from "../utils/useAuthorization";
 import { useMobileWallet } from "../utils/useMobileWallet";
@@ -24,22 +22,34 @@ import { useConnection } from "../utils/ConnectionProvider";
 import { alertAndLog } from "../utils/alertAndLog";
 import { showToast } from "../components/ui/toast";
 import type { RootStackParamList } from "../navigators/AppNavigator";
+import {
+  Body,
+  Loading,
+  Muted,
+  PixelButton,
+  PixelLink,
+  PixelPanel,
+  StatusStamp,
+  Title,
+  colors,
+  space,
+  useParallaxScroll,
+} from "../theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ReceiptDetail">;
 
 const fmtTime = (sec: number) => new Date(sec * 1000).toLocaleString();
 
 function TxLink({ label, signature, cluster }: { label: string; signature: string; cluster: string }) {
+  return <PixelLink label={label} onPress={() => Linking.openURL(solscanTxUrl(signature, cluster))} />;
+}
+
+function Fact({ label, children, selectable }: { label: string; children: string; selectable?: boolean }) {
   return (
-    <Button
-      mode="text"
-      icon="open-in-new"
-      contentStyle={styles.linkContent}
-      style={styles.link}
-      onPress={() => Linking.openURL(solscanTxUrl(signature, cluster))}
-    >
-      {label}
-    </Button>
+    <View style={styles.fact}>
+      <Muted>{label}</Muted>
+      <Body selectable={selectable}>{children}</Body>
+    </View>
   );
 }
 
@@ -48,35 +58,35 @@ function Resolution({ row, status, now, src }: { row: ReceiptRow; status: Status
   const { receipt } = row;
   switch (status) {
     case "sealed":
-      return <Text variant="bodyLarge">{`Reveal opens in ${formatCountdown(receipt.deadline - now)}`}</Text>;
+      return <Body>{`Reveal opens in ${formatCountdown(receipt.deadline - now)}`}</Body>;
     case "awaiting_reveal":
       return (
-        <Text variant="bodyLarge">
+        <Body>
           {row.hasSecret
             ? `Reveal within ${formatCountdown(receipt.deadline + REVEAL_GRACE_SEC - now)} or it counts as a miss.`
             : `The secret for this call is not on this phone. It forfeits in ${formatCountdown(receipt.deadline + REVEAL_GRACE_SEC - now)}.`}
-        </Text>
+        </Body>
       );
     case "forfeited":
-      return <Text variant="bodyLarge">Not revealed within 24 h of the deadline — counts as a miss.</Text>;
+      return <Body>Not revealed within 24 h of the deadline — counts as a miss.</Body>;
     case "unresolved":
       return (
-        <Text variant="bodyLarge">
+        <Body>
           {now < receipt.deadline
             ? `Revealed early. Resolves after the deadline (${formatCountdown(receipt.deadline - now)}).`
             : `${name} price at the deadline is not available yet.`}
-        </Text>
+        </Body>
       );
     case "hit":
     case "miss": {
       const call = receipt.reveal!.call;
       const price = receipt.priceAtDeadline as number;
       return (
-        <Text variant="bodyLarge">
+        <Body>
           {`${name} ${call.asset}/${quote} at deadline: ${formatUsd(price)} — ${call.dir} $${formatUsd(call.target)}: ${
             status === "hit" ? "HIT" : "MISS"
           }`}
-        </Text>
+        </Body>
       );
     }
   }
@@ -93,6 +103,7 @@ export function ReceiptDetailScreen({ route }: Props) {
   const receipts = useReceipts(selectedAccount?.publicKey);
   const receiptsV2 = useReceiptsV2(selectedAccount?.publicKey);
   const now = useNowSec();
+  const parallaxScroll = useParallaxScroll();
   const [revealing, setRevealing] = useState(false);
   const [sentReveal, setSentReveal] = useState<string | null>(null);
 
@@ -135,7 +146,13 @@ export function ReceiptDetailScreen({ route }: Props) {
     receiptsV2.refetch();
   };
   const refresh = (
-    <RefreshControl refreshing={receipts.isRefetching || receiptsV2.isRefetching} onRefresh={refetchAll} />
+    <RefreshControl
+      refreshing={receipts.isRefetching || receiptsV2.isRefetching}
+      onRefresh={refetchAll}
+      tintColor={colors.accent}
+      colors={[colors.accent]}
+      progressBackgroundColor={colors.surface}
+    />
   );
 
   if (rowV2) {
@@ -152,8 +169,7 @@ export function ReceiptDetailScreen({ route }: Props) {
   if (receipts.isLoading || receiptsV2.isLoading) {
     return (
       <View style={[styles.screenContainer, styles.center]}>
-        <ActivityIndicator />
-        <Text style={styles.gap}>Reading receipt from chain…</Text>
+        <Loading caption="Reading receipt from chain…" />
       </View>
     );
   }
@@ -162,23 +178,20 @@ export function ReceiptDetailScreen({ route }: Props) {
   if (!row) {
     // Just sealed (not indexed yet), another wallet, or an RPC error.
     return (
-      <ScrollView contentContainerStyle={styles.screenContainer} refreshControl={refresh}>
-        <Text variant="titleLarge">
-          {loadError ? "Couldn't load receipt" : "Waiting for the commit to confirm"}
-        </Text>
-        <Text style={styles.gapSmall}>
-          {loadError
-            ? loadError instanceof Error
-              ? loadError.message
-              : String(loadError)
-            : "Pull down to refresh in a few seconds."}
-        </Text>
-        <Text variant="labelLarge" style={styles.gap}>Commit hash</Text>
-        <Text selectable>{hash}</Text>
-        {signature && <TxLink label="Commit on Solscan" signature={signature} cluster={cluster} />}
-        <Button style={styles.gap} mode="outlined" icon="refresh" onPress={refetchAll}>
-          Refresh
-        </Button>
+      <ScrollView {...parallaxScroll} contentContainerStyle={styles.screenContainer} refreshControl={refresh}>
+        <Title>{loadError ? "COULDN'T LOAD RECEIPT" : "CONFIRMING…"}</Title>
+        <PixelPanel>
+          <Body>
+            {loadError
+              ? loadError instanceof Error
+                ? loadError.message
+                : String(loadError)
+              : "Waiting for the commit to confirm. Pull down to refresh in a few seconds."}
+          </Body>
+          <Fact label="Commit hash" selectable>{hash}</Fact>
+          {signature && <TxLink label="Commit on Solscan" signature={signature} cluster={cluster} />}
+        </PixelPanel>
+        <PixelButton label="Refresh" variant="ghost" onPress={refetchAll} />
       </ScrollView>
     );
   }
@@ -190,103 +203,62 @@ export function ReceiptDetailScreen({ route }: Props) {
   const src: PriceSourceKind = call !== null ? priceSource.kindOf(call.asset) : "pyth";
 
   return (
-    <ScrollView contentContainerStyle={styles.screenContainer} refreshControl={refresh}>
+    <ScrollView {...parallaxScroll} contentContainerStyle={styles.screenContainer} refreshControl={refresh}>
       <View style={styles.row}>
-        <Text variant="headlineSmall" style={styles.title}>
-          {call ? describeCall(call) : "Hidden call"}
-        </Text>
-        <StatusChip status={status} />
+        <Title style={styles.title}>{call ? describeCall(call).toUpperCase() : "HIDDEN CALL"}</Title>
+        <StatusStamp status={status} />
       </View>
-      {!call && (
-        <Text variant="bodySmall" style={styles.muted}>
-          Only the hash is on chain and the secret is not on this phone.
-        </Text>
-      )}
+      <Muted>LEGACY v1 receipt — not counted in the rating.</Muted>
+      {!call && <Muted>Only the hash is on chain and the secret is not on this phone.</Muted>}
+      {demo && <DemoBadge />}
 
-      {demo && (
-        <View style={styles.gapSmall}>
-          <DemoBadge />
-        </View>
-      )}
-
-      <Card style={styles.gap}>
-        <Card.Content>
-          <Resolution row={row} status={status} now={now} src={src} />
-        </Card.Content>
+      <PixelPanel>
+        <Resolution row={row} status={status} now={now} src={src} />
         {status === "unresolved" && (
-          <Card.Actions>
-            <Button icon="refresh" loading={receipts.isRefetching} onPress={() => receipts.refetch()}>
-              Retry
-            </Button>
-          </Card.Actions>
+          <PixelButton
+            label={receipts.isRefetching ? "Retrying…" : "Retry"}
+            variant="ghost"
+            disabled={receipts.isRefetching}
+            onPress={() => receipts.refetch()}
+          />
         )}
-      </Card>
+      </PixelPanel>
 
       {pendingReveal && sentReveal && (
-        <Card style={styles.gap}>
-          <Card.Content>
-            <Text variant="titleSmall">Reveal sent</Text>
-            <Text variant="bodySmall">Waiting for it to confirm. Pull down to refresh.</Text>
-          </Card.Content>
-          <Card.Actions>
-            <TxLink label="Reveal on Solscan" signature={sentReveal} cluster={cluster} />
-          </Card.Actions>
-        </Card>
+        <PixelPanel title="REVEAL SENT">
+          <Muted>Waiting for it to confirm. Pull down to refresh.</Muted>
+          <TxLink label="Reveal on Solscan" signature={sentReveal} cluster={cluster} />
+        </PixelPanel>
       )}
 
       {canReveal(receipt, row.hasSecret, now) && !pendingReveal && (
-        <Button
-          style={styles.gap}
-          mode="contained"
-          icon="lock-open-variant"
-          onPress={onReveal}
-          loading={revealing}
-          disabled={revealing}
-        >
-          Reveal
-        </Button>
+        <PixelButton label={revealing ? "REVEALING…" : "REVEAL"} icon="receipt" big onPress={onReveal} disabled={revealing} />
       )}
 
-      <Divider style={styles.gap} />
-      <Text variant="labelLarge" style={styles.gap}>Deadline</Text>
-      <Text>{fmtTime(receipt.deadline)}</Text>
-      {call && (
-        <>
-          <Text variant="labelLarge" style={styles.gap}>Created</Text>
-          <Text>{fmtTime(call.created)}</Text>
-        </>
-      )}
-      <Text variant="labelLarge" style={styles.gap}>Sealed on chain</Text>
-      <Text>{fmtTime(receipt.commit.blockTime)}</Text>
-      <TxLink label="Commit on Solscan" signature={receipt.commit.signature} cluster={cluster} />
-      {receipt.reveal && (
-        <>
-          <Text variant="labelLarge" style={styles.gap}>Revealed on chain</Text>
-          <Text>{fmtTime(receipt.reveal.blockTime)}</Text>
-          <TxLink label="Reveal on Solscan" signature={receipt.reveal.signature} cluster={cluster} />
-        </>
-      )}
-
-      <Text variant="labelLarge" style={styles.gap}>Commit hash</Text>
-      <Text selectable variant="bodySmall">{receipt.hash}</Text>
-      {receipt.reveal && (
-        <>
-          <Text variant="labelLarge" style={styles.gap}>Revealed JSON | salt</Text>
-          <Text selectable variant="bodySmall">{`${receipt.reveal.json}|${receipt.reveal.salt}`}</Text>
-        </>
-      )}
+      <PixelPanel title="ON CHAIN">
+        <Fact label="Deadline">{fmtTime(receipt.deadline)}</Fact>
+        {call && <Fact label="Created">{fmtTime(call.created)}</Fact>}
+        <Fact label="Sealed on chain">{fmtTime(receipt.commit.blockTime)}</Fact>
+        <TxLink label="Commit on Solscan" signature={receipt.commit.signature} cluster={cluster} />
+        {receipt.reveal && (
+          <>
+            <Fact label="Revealed on chain">{fmtTime(receipt.reveal.blockTime)}</Fact>
+            <TxLink label="Reveal on Solscan" signature={receipt.reveal.signature} cluster={cluster} />
+          </>
+        )}
+        <Fact label="Commit hash" selectable>{receipt.hash}</Fact>
+        {receipt.reveal && (
+          <Fact label="Revealed JSON | salt" selectable>{`${receipt.reveal.json}|${receipt.reveal.salt}`}</Fact>
+        )}
+      </PixelPanel>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screenContainer: { padding: 16, flexGrow: 1 },
+  screenContainer: { padding: space.md, gap: space.md, flexGrow: 1 },
   center: { alignItems: "center", justifyContent: "center" },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  title: { flex: 1, marginRight: 8 },
-  gap: { marginTop: 12 },
-  gapSmall: { marginTop: 6 },
-  muted: { marginTop: 4, opacity: 0.7 },
-  link: { alignSelf: "flex-start", marginLeft: -12 },
-  linkContent: { flexDirection: "row-reverse" },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.sm },
+  title: { flex: 1, color: colors.text },
+  fact: { gap: 2 },
 });

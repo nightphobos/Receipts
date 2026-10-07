@@ -1,6 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { ActivityIndicator, Button, Card, Chip, Snackbar, Text } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
 
@@ -19,13 +18,28 @@ import { ConnectButton } from "../components/sign-in/sign-in-ui";
 import { useAuthorization } from "../utils/useAuthorization";
 import { alertAndLog } from "../utils/alertAndLog";
 import { ellipsify } from "../utils/ellipsify";
-import { PixelIcon, colors, useParallaxScroll } from "../theme";
+import { showToast } from "../components/ui/toast";
+import {
+  Badge,
+  Body,
+  Loading,
+  Muted,
+  Num,
+  PixelButton,
+  PixelIcon,
+  PixelPanel,
+  Title,
+  colors,
+  fonts,
+  space,
+  useParallaxScroll,
+} from "../theme";
 
 function StatBox({ label, value }: { label: string; value: number | string }) {
   return (
     <View style={styles.statBox}>
-      <Text variant="headlineSmall" style={styles.bold}>{value}</Text>
-      <Text variant="bodySmall" style={styles.muted}>{label}</Text>
+      <Num style={styles.statValue}>{value}</Num>
+      <Muted>{label}</Muted>
     </View>
   );
 }
@@ -39,7 +53,6 @@ export function ProfileScreen() {
   const v2Query = useReceiptsV2(selectedAccount?.publicKey);
   const genesis = useSeekerGenesis(selectedAccount?.publicKey);
   const now = useNowSec();
-  const [toast, setToast] = useState<string | null>(null);
 
   const receipts = {
     isLoading: legacyQuery.isLoading || v2Query.isLoading,
@@ -60,7 +73,7 @@ export function ProfileScreen() {
 
   const copyShareText = async () => {
     await Clipboard.setStringAsync(shareText(list, Math.floor(Date.now() / 1000), selectedCluster.network, { demo }));
-    setToast("Share text copied");
+    showToast("Share text copied");
   };
 
   const exportSecrets = async () => {
@@ -71,168 +84,132 @@ export function ProfileScreen() {
         return;
       }
       await Clipboard.setStringAsync(JSON.stringify(entries));
-      setToast(`${entries.length} secret${entries.length === 1 ? "" : "s"} copied — keep them private`);
+      showToast(`${entries.length} secret${entries.length === 1 ? "" : "s"} copied — keep them private`);
     } catch (e) {
       alertAndLog("Export failed", e instanceof Error ? e.message : String(e));
     }
   };
 
   return (
-    <View style={styles.flex}>
-      <ScrollView
-        {...parallaxScroll}
-        contentContainerStyle={styles.screenContainer}
-        refreshControl={
-          <RefreshControl
-            refreshing={receipts.isRefetching}
-            onRefresh={() => {
-              receipts.refetch();
-              genesis.refetch();
-            }}
-          />
-        }
-      >
-        <View style={styles.row}>
-          <Text variant="titleLarge" style={styles.bold}>Profile</Text>
-          <Chip icon="lan" compact>{selectedCluster.name}</Chip>
+    <ScrollView
+      {...parallaxScroll}
+      contentContainerStyle={styles.screenContainer}
+      refreshControl={
+        <RefreshControl
+          refreshing={receipts.isRefetching}
+          onRefresh={() => {
+            receipts.refetch();
+            genesis.refetch();
+          }}
+          tintColor={colors.accent}
+          colors={[colors.accent]}
+          progressBackgroundColor={colors.surface}
+        />
+      }
+    >
+      <View style={styles.row}>
+        <Title>MY STATS</Title>
+        <Badge label={selectedCluster.name.toUpperCase()} color={colors.border} textColor={colors.text} />
+      </View>
+
+      {selectedAccount ? (
+        <View style={styles.walletRow}>
+          <Muted selectable>{ellipsify(selectedAccount.publicKey.toBase58(), 8)}</Muted>
+          {genesis.data === true && <SeekerBadge />}
         </View>
+      ) : (
+        <>
+          <Body>Connect a wallet to see your hit-rate.</Body>
+          <ConnectButton />
+        </>
+      )}
 
-        {selectedAccount ? (
-          <>
-            <Text selectable variant="bodySmall" style={[styles.gapSmall, styles.muted]}>
-              {ellipsify(selectedAccount.publicKey.toBase58(), 8)}
-            </Text>
-            {genesis.data === true && (
-              <View style={styles.gapSmall}>
-                <SeekerBadge />
-              </View>
-            )}
-          </>
-        ) : (
-          <View style={styles.gap}>
-            <Text style={styles.gapSmall}>Connect a wallet to see your hit-rate.</Text>
-            <View style={styles.gap}>
-              <ConnectButton />
-            </View>
-          </View>
-        )}
-
-        {selectedAccount && (
-          <Card style={styles.gap}>
-            <Card.Content>
-              {receipts.isLoading ? (
-                <ActivityIndicator />
-              ) : receipts.isError ? (
-                <>
-                  <Text variant="titleSmall">Couldn't load receipts</Text>
-                  <Text variant="bodySmall">
-                    {receipts.error instanceof Error ? receipts.error.message : String(receipts.error)}
-                  </Text>
-                  <Button style={styles.gapSmall} onPress={() => receipts.refetch()}>Retry</Button>
-                </>
-              ) : (
-                <>
-                  {demo && (
-                    <View style={styles.demoRow}>
-                      <DemoBadge />
-                      <Text variant="bodySmall" style={[styles.muted, styles.demoNote]}>
-                        Scored against demo prices — not real results
-                      </Text>
-                    </View>
-                  )}
-                  <Text variant="bodyMedium" style={styles.muted}>Rating</Text>
-                  <Text variant="headlineMedium" style={styles.bold}>{formatSigma(s2.z)}</Text>
-                  <Text variant="bodySmall" style={styles.muted}>
-                    {`z = (hits − misses) / √N · N = ${s2.n} · hit-rate ${formatHitRate(s2.hitRate)}`}
-                  </Text>
-                  <View style={[styles.statsRow, styles.gap]}>
-                    <StatBox label="N" value={s2.n} />
-                    <StatBox label="Hits" value={s2.hits} />
-                    <StatBox label="Misses" value={s2.misses} />
-                    <StatBox label="Void" value={s2.voids} />
-                    <StatBox label="Pending" value={s2.pending} />
-                  </View>
-                  <Text variant="bodyMedium" style={styles.gap}>{`hidden & forfeited: ${s2.forfeited}`}</Text>
-                  {s2.overlaps > 0 && (
-                    <Text variant="bodyMedium" style={styles.gapSmall}>{`overlapping calls: ${s2.overlaps}`}</Text>
-                  )}
-                  <View style={[styles.streakRow, styles.gapSmall]}>
-                    <PixelIcon name="flame" scale={1.25} color={colors.down} />
-                    <Text variant="bodyMedium" style={styles.streakText}>
-                      {`streak: ${days} day${days === 1 ? "" : "s"}`}
-                    </Text>
-                  </View>
-                  <Text variant="bodySmall" style={[styles.muted, styles.gapSmall]}>
-                    {`Leaderboard: ${elig.eligible ? "eligible" : "not yet"} · ${elig.n}/${LEADERBOARD_MIN_N} scored ≥24h calls · ${elig.days}/${LEADERBOARD_MIN_DAYS} days · Genesis ${elig.hasGenesis ? "✓" : "✕"}`}
-                  </Text>
-                  <Text variant="bodySmall" style={[styles.muted, styles.gapSmall]}>
-                    Misses include forfeited and overlapping calls. VOID (price unchanged) is not counted. 1h practice
-                    calls count here but never on the leaderboard.
-                  </Text>
-                </>
+      {selectedAccount && (
+        <PixelPanel title="RATING">
+          {receipts.isLoading ? (
+            <Loading />
+          ) : receipts.isError ? (
+            <>
+              <Body>Couldn't load receipts</Body>
+              <Muted>{receipts.error instanceof Error ? receipts.error.message : String(receipts.error)}</Muted>
+              <PixelButton label="Retry" variant="ghost" onPress={() => receipts.refetch()} />
+            </>
+          ) : (
+            <>
+              {demo && (
+                <View style={styles.demoRow}>
+                  <DemoBadge />
+                  <Muted style={styles.flex}>Scored against demo prices — not real results</Muted>
+                </View>
               )}
-            </Card.Content>
-          </Card>
-        )}
-
-        {selectedAccount && list.length > 0 && (
-          <Card style={styles.gap}>
-            <Card.Content>
-              <Text variant="titleSmall">Legacy receipts (v1)</Text>
-              <Text variant="bodySmall" style={[styles.muted, styles.gapSmall]}>
-                Old price-target calls. Kept on chain and shown here, excluded from the rating and the leaderboard.
-              </Text>
-              <View style={[styles.statsRow, styles.gap]}>
-                <StatBox label="Total" value={s.total} />
-                <StatBox label="Hits" value={s.hits} />
-                <StatBox label="Misses" value={s.misses} />
-                <StatBox label="Forfeited" value={s.forfeited} />
-                <StatBox label="Pending" value={s.pending} />
+              <Num style={styles.sigma}>{formatSigma(s2.z)}</Num>
+              <Muted>{`z = (hits − misses) / √N · N = ${s2.n} · hit-rate ${formatHitRate(s2.hitRate)}`}</Muted>
+              <View style={styles.statsRow}>
+                <StatBox label="N" value={s2.n} />
+                <StatBox label="HITS" value={s2.hits} />
+                <StatBox label="MISSES" value={s2.misses} />
+                <StatBox label="VOID" value={s2.voids} />
+                <StatBox label="PENDING" value={s2.pending} />
               </View>
-              <Text variant="bodySmall" style={[styles.muted, styles.gapSmall]}>
-                {`Legacy hit-rate ${formatHitRate(s.hitRate)}`}
-              </Text>
-            </Card.Content>
-            <Card.Actions>
-              <Button icon="share-variant" disabled={receipts.isLoading || receipts.isError} onPress={copyShareText}>
-                Copy legacy share text
-              </Button>
-            </Card.Actions>
-          </Card>
-        )}
+              <Body>{`hidden & forfeited: ${s2.forfeited}`}</Body>
+              {s2.overlaps > 0 && <Body>{`overlapping calls: ${s2.overlaps}`}</Body>}
+              <View style={styles.streakRow}>
+                <PixelIcon name="flame" scale={1.5} color={colors.down} />
+                <Body>{`streak: ${days} day${days === 1 ? "" : "s"}`}</Body>
+              </View>
+              <Muted>
+                {`Leaderboard: ${elig.eligible ? "eligible" : "not yet"} · ${elig.n}/${LEADERBOARD_MIN_N} scored ≥24h calls · ${elig.days}/${LEADERBOARD_MIN_DAYS} days · Genesis ${elig.hasGenesis ? "✓" : "✕"}`}
+              </Muted>
+              <Muted>
+                Misses include forfeited and overlapping calls. VOID (price unchanged) is not counted. 1h practice
+                calls count here but never on the leaderboard.
+              </Muted>
+            </>
+          )}
+        </PixelPanel>
+      )}
 
-        <Card style={styles.gap}>
-          <Card.Content>
-            <Text variant="titleSmall">Reveal secrets</Text>
-            <Text variant="bodySmall" style={styles.gapSmall}>
-              Secrets live only on this phone. Lose them and your sealed calls can't be revealed — they will count
-              as misses. Export copies them to the clipboard as JSON; store it somewhere private.
-            </Text>
-          </Card.Content>
-          <Card.Actions>
-            <Button icon="key-variant" onPress={exportSecrets}>Export secrets</Button>
-          </Card.Actions>
-        </Card>
-      </ScrollView>
-      <Snackbar visible={toast !== null} onDismiss={() => setToast(null)} duration={2500}>
-        {toast ?? ""}
-      </Snackbar>
-    </View>
+      {selectedAccount && list.length > 0 && (
+        <PixelPanel title="LEGACY RECEIPTS (v1)">
+          <Muted>Old price-target calls. Kept on chain and shown here, excluded from the rating and the leaderboard.</Muted>
+          <View style={styles.statsRow}>
+            <StatBox label="TOTAL" value={s.total} />
+            <StatBox label="HITS" value={s.hits} />
+            <StatBox label="MISSES" value={s.misses} />
+            <StatBox label="NO SHOW" value={s.forfeited} />
+            <StatBox label="PENDING" value={s.pending} />
+          </View>
+          <Muted>{`Legacy hit-rate ${formatHitRate(s.hitRate)}`}</Muted>
+          <PixelButton
+            label="Copy legacy share text"
+            icon="share"
+            variant="ghost"
+            disabled={receipts.isLoading || receipts.isError}
+            onPress={copyShareText}
+          />
+        </PixelPanel>
+      )}
+
+      <PixelPanel title="REVEAL SECRETS">
+        <Muted>
+          Secrets live only on this phone. Lose them and your sealed calls can't be revealed — they will count as
+          misses. Export copies them to the clipboard as JSON; store it somewhere private.
+        </Muted>
+        <PixelButton label="Export secrets" icon="lock" variant="ghost" onPress={exportSecrets} />
+      </PixelPanel>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  screenContainer: { padding: 16 },
+  screenContainer: { padding: space.md, gap: space.md },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  statsRow: { flexDirection: "row", justifyContent: "space-between" },
+  walletRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.sm },
+  statsRow: { flexDirection: "row", justifyContent: "space-between", marginVertical: space.sm },
   statBox: { alignItems: "center", flex: 1 },
-  bold: { fontWeight: "bold" },
-  demoRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
-  demoNote: { flex: 1, marginLeft: 8 },
-  gap: { marginTop: 12 },
-  gapSmall: { marginTop: 6 },
-  muted: { opacity: 0.7 },
-  streakRow: { flexDirection: "row", alignItems: "center" },
-  streakText: { marginLeft: 6 },
+  statValue: { fontSize: 28 },
+  sigma: { fontFamily: fonts.number, fontSize: 40, color: colors.accent },
+  demoRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  streakRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
 });

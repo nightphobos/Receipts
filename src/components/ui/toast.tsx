@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { Text } from "react-native";
 import { Snackbar } from "react-native-paper";
+
+import { colors, fonts } from "../../theme";
 
 type Toast = { id: number; message: string; error: boolean };
 
@@ -38,9 +41,15 @@ export function ToastHost() {
       visible={toast !== null}
       onDismiss={() => setToast(null)}
       duration={toast?.error ? 5000 : 2500}
-      action={{ label: "OK", onPress: () => setToast(null) }}
+      action={{ label: "OK", onPress: () => setToast(null), textColor: colors.accent }}
+      style={{
+        backgroundColor: colors.surface,
+        borderWidth: 2,
+        borderColor: toast?.error ? colors.down : colors.paper,
+        borderRadius: 0,
+      }}
     >
-      {toast?.message ?? ""}
+      <Text style={{ fontFamily: fonts.body, color: colors.text }}>{toast?.message ?? ""}</Text>
     </Snackbar>
   );
 }

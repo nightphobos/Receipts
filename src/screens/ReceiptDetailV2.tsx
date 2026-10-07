@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Linking, RefreshControl, ScrollView, Share, StyleSheet, View } from "react-native";
-import { Button, Card, Divider, Text } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -17,7 +16,6 @@ import { useMasterKey } from "../hooks/useMasterKey";
 import { useNowSec } from "../hooks/useNow";
 import { usePriceSource } from "../hooks/usePriceSource";
 import { DemoBadge } from "../components/receipt/demo-badge";
-import { StatusChip } from "../components/receipt/status-chip";
 import { RevealCeremony } from "../components/receipt/reveal-ceremony";
 import { useCluster } from "../components/cluster/cluster-data-access";
 import { useAuthorization } from "../utils/useAuthorization";
@@ -25,22 +23,34 @@ import { useMobileWallet } from "../utils/useMobileWallet";
 import { useConnection } from "../utils/ConnectionProvider";
 import { alertAndLog } from "../utils/alertAndLog";
 import { showToast } from "../components/ui/toast";
-import { MascotDialog, useParallaxScroll } from "../theme";
+import {
+  Body,
+  MascotDialog,
+  Muted,
+  PixelButton,
+  PixelLink,
+  PixelPanel,
+  StatusStamp,
+  Title,
+  colors,
+  space,
+  useParallaxScroll,
+} from "../theme";
 import { mascotLine, poseForStatus } from "../core/mascot";
 
 const fmtTime = (sec: number) => new Date(sec * 1000).toLocaleString();
 
 function TxLink({ label, signature, cluster }: { label: string; signature: string; cluster: string }) {
+  return <PixelLink label={label} onPress={() => Linking.openURL(solscanTxUrl(signature, cluster))} />;
+}
+
+/** One "label / value" pair in the on-chain facts panel. */
+function Fact({ label, children, selectable }: { label: string; children: string; selectable?: boolean }) {
   return (
-    <Button
-      mode="text"
-      icon="open-in-new"
-      contentStyle={styles.linkContent}
-      style={styles.link}
-      onPress={() => Linking.openURL(solscanTxUrl(signature, cluster))}
-    >
-      {label}
-    </Button>
+    <View style={styles.fact}>
+      <Muted>{label}</Muted>
+      <Body selectable={selectable}>{children}</Body>
+    </View>
   );
 }
 
@@ -167,31 +177,27 @@ export function ReceiptDetailV2({
     <ScrollView
       {...parallaxScroll}
       contentContainerStyle={styles.screenContainer}
-      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+      refreshControl={
+        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.accent} colors={[colors.accent]} progressBackgroundColor={colors.surface} />
+      }
     >
       <View style={styles.row}>
-        <Text variant="headlineSmall" style={styles.title}>
-          {call ? describeCallV2(call) : `${receipt.asset} · hidden direction`}
-        </Text>
-        <StatusChip status={status} />
+        <Title style={styles.title}>
+          {call ? `$${describeCallV2(call).toUpperCase()}` : `$${receipt.asset} · HIDDEN`}
+        </Title>
+        <StatusStamp
+          status={status}
+          countdown={status === "sealed" ? formatCountdown(receipt.deadline - now) : undefined}
+        />
       </View>
-      <Text variant="bodySmall" style={styles.muted}>
-        {`Horizon ${receipt.horizon}${receipt.horizon === "1h" ? " (practice)" : ""}`}
-      </Text>
-      {pose !== "idle" && (
-        <MascotDialog style={styles.gap} pose={pose} text={mascotLine(pose, receipt)} />
-      )}
-      {demo && (
-        <View style={styles.gapSmall}>
-          <DemoBadge />
-        </View>
-      )}
+      <Muted>{`Horizon ${receipt.horizon}${receipt.horizon === "1h" ? " (practice)" : ""}`}</Muted>
+      {pose !== "idle" && <MascotDialog pose={pose} text={mascotLine(pose, receipt)} />}
+      {demo && <DemoBadge />}
 
       {resolved && (
         <>
           <RevealCeremony
             key={ceremonyKey ?? 0}
-            style={styles.gap}
             play={ceremonyKey !== null}
             outcome={status}
             p0={receipt.p0 as number}
@@ -199,106 +205,75 @@ export function ReceiptDetailV2({
             commitSignature={receipt.commit.signature}
             sealedAt={receipt.commit.blockTime}
           />
-          <Button
-            style={styles.link}
-            mode="text"
-            icon="replay"
-            onPress={() => setCeremonyKey((k) => (k ?? 0) + 1)}
-          >
-            Replay reveal
-          </Button>
+          <PixelLink label="Replay reveal" onPress={() => setCeremonyKey((k) => (k ?? 0) + 1)} />
         </>
       )}
 
       {share && (
-        <View style={[styles.row, styles.gapSmall]}>
-          <Button mode="contained-tonal" icon="share-variant" onPress={onShare}>
-            {status === "sealed" ? "Share sealed call" : "Share result"}
-          </Button>
-          <Button mode="text" icon="content-copy" onPress={onCopy}>
-            Copy
-          </Button>
+        <View style={styles.shareRow}>
+          <PixelButton
+            style={styles.flex}
+            label={status === "sealed" ? "SHARE SEALED CALL" : "SHARE RESULT"}
+            icon="share"
+            onPress={onShare}
+          />
+          <PixelButton label="COPY" variant="ghost" onPress={onCopy} />
         </View>
       )}
 
-      <Card style={styles.gap}>
-        <Card.Content>
-          <Text variant="bodyLarge">{resolutionText(row, status, now, priceName)}</Text>
-        </Card.Content>
+      <PixelPanel>
+        <Body>{resolutionText(row, status, now, priceName)}</Body>
         {status === "unresolved" && (
-          <Card.Actions>
-            <Button icon="refresh" loading={isRefetching} onPress={refetch}>
-              Retry
-            </Button>
-          </Card.Actions>
+          <PixelButton label={isRefetching ? "Retrying…" : "Retry"} variant="ghost" disabled={isRefetching} onPress={refetch} />
         )}
-      </Card>
+      </PixelPanel>
 
       {pendingReveal && sentReveal && (
-        <Card style={styles.gap}>
-          <Card.Content>
-            <Text variant="titleSmall">Reveal sent</Text>
-            <Text variant="bodySmall">Waiting for it to confirm. Pull down to refresh.</Text>
-          </Card.Content>
-          <Card.Actions>
-            <TxLink label="Reveal on Solscan" signature={sentReveal} cluster={cluster} />
-          </Card.Actions>
-        </Card>
+        <PixelPanel title="REVEAL SENT">
+          <Muted>Waiting for it to confirm. Pull down to refresh.</Muted>
+          <TxLink label="Reveal on Solscan" signature={sentReveal} cluster={cluster} />
+        </PixelPanel>
       )}
 
       {canRevealV2(receipt, now) && !pendingReveal && (
         <>
-          <Button
-            style={styles.gap}
-            mode="contained"
-            icon={needsRecovery ? "key" : "lock-open-variant"}
+          <PixelButton
+            label={revealing ? "REVEALING…" : needsRecovery ? "RECOVER WITH WALLET & REVEAL" : "REVEAL"}
+            icon="receipt"
+            big
             onPress={onReveal}
-            loading={revealing}
             disabled={revealing}
-          >
-            {needsRecovery ? "Recover with wallet & reveal" : "Reveal"}
-          </Button>
+          />
           {needsRecovery && (
-            <Text variant="bodySmall" style={styles.muted}>
-              The secret isn't on this phone. Your wallet signs the key message once to rebuild it.
-            </Text>
+            <Muted>The secret isn't on this phone. Your wallet signs the key message once to rebuild it.</Muted>
           )}
         </>
       )}
 
-      <Divider style={styles.gap} />
-      <Text variant="labelLarge" style={styles.gap}>Deadline</Text>
-      <Text>{fmtTime(receipt.deadline)}</Text>
-      <Text variant="labelLarge" style={styles.gap}>Sealed on chain</Text>
-      <Text>{fmtTime(receipt.commit.blockTime)}</Text>
-      <TxLink label="Commit on Solscan" signature={receipt.commit.signature} cluster={cluster} />
-      {receipt.reveal && (
-        <>
-          <Text variant="labelLarge" style={styles.gap}>Revealed on chain</Text>
-          <Text>{fmtTime(receipt.reveal.blockTime)}</Text>
-          <TxLink label="Reveal on Solscan" signature={receipt.reveal.signature} cluster={cluster} />
-        </>
-      )}
-
-      <Text variant="labelLarge" style={styles.gap}>Commit hash</Text>
-      <Text selectable variant="bodySmall">{receipt.hash}</Text>
-      {receipt.reveal && (
-        <>
-          <Text variant="labelLarge" style={styles.gap}>Revealed JSON | salt</Text>
-          <Text selectable variant="bodySmall">{`${receipt.reveal.json}|${receipt.reveal.salt}`}</Text>
-        </>
-      )}
+      <PixelPanel title="ON CHAIN">
+        <Fact label="Deadline">{fmtTime(receipt.deadline)}</Fact>
+        <Fact label="Sealed on chain">{fmtTime(receipt.commit.blockTime)}</Fact>
+        <TxLink label="Commit on Solscan" signature={receipt.commit.signature} cluster={cluster} />
+        {receipt.reveal && (
+          <>
+            <Fact label="Revealed on chain">{fmtTime(receipt.reveal.blockTime)}</Fact>
+            <TxLink label="Reveal on Solscan" signature={receipt.reveal.signature} cluster={cluster} />
+          </>
+        )}
+        <Fact label="Commit hash" selectable>{receipt.hash}</Fact>
+        {receipt.reveal && (
+          <Fact label="Revealed JSON | salt" selectable>{`${receipt.reveal.json}|${receipt.reveal.salt}`}</Fact>
+        )}
+      </PixelPanel>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screenContainer: { padding: 16, flexGrow: 1 },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  title: { flex: 1, marginRight: 8 },
-  gap: { marginTop: 12 },
-  gapSmall: { marginTop: 6 },
-  muted: { marginTop: 4, opacity: 0.7 },
-  link: { alignSelf: "flex-start", marginLeft: -12 },
-  linkContent: { flexDirection: "row-reverse" },
+  screenContainer: { padding: space.md, gap: space.md, flexGrow: 1 },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.sm },
+  title: { flex: 1, color: colors.text },
+  shareRow: { flexDirection: "row", gap: space.sm },
+  flex: { flex: 1 },
+  fact: { gap: 2 },
 });

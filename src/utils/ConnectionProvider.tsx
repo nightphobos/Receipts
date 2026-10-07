@@ -7,6 +7,8 @@ import React, {
   useContext,
 } from "react";
 import { useCluster } from "../components/cluster/cluster-data-access";
+import { demoConnection } from "../demo/DemoConnection";
+import { useDemo } from "../demo/store";
 
 export interface ConnectionProviderProps {
   children: ReactNode;
@@ -19,10 +21,13 @@ export const ConnectionProvider: FC<ConnectionProviderProps> = ({
 }) => {
   const { selectedCluster } = useCluster();
 
-  const connection = useMemo(
+  const demo = useDemo().active;
+  const live = useMemo(
     () => new Connection(selectedCluster.endpoint, config),
     [selectedCluster, config]
   );
+  // Demo mode: the simulated chain (no network), shaped like the Connection methods the app uses.
+  const connection = demo ? (demoConnection as unknown as Connection) : live;
 
   return (
     <ConnectionContext.Provider value={{ connection }}>

@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from "react";
+import { appNowSec } from "../demo/store";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getRandomBytes } from "expo-crypto";
@@ -142,7 +143,7 @@ export function NewReceiptScreen() {
 
   const onSeal = useCallback(async () => {
     if (!selectedAccount) return;
-    const result = draftCallV2({ asset, dir, horizon }, Math.floor(Date.now() / 1000));
+    const result = draftCallV2({ asset, dir, horizon }, appNowSec());
     if (!result.ok) return;
     const state = masterKey.state ?? (await setupMaster());
     if (!state) return;

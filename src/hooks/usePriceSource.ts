@@ -1,5 +1,9 @@
 import { FEED_IDS } from "../core/pyth";
 import { selectPriceSource, withMockedAssets, type PriceSource } from "../core/price";
+import { demoPriceSource } from "../core/demoData";
+import { appNowSec, useDemo } from "../demo/store";
+
+const DEMO_PRICE_SOURCE: PriceSource = demoPriceSource(appNowSec);
 
 // Literal process.env access so Expo inlines the values at bundle time.
 const APP_PRICE_SOURCE: PriceSource = selectPriceSource(
@@ -15,5 +19,6 @@ const APP_PRICE_SOURCE: PriceSource = selectPriceSource(
 
 /** The app's only way to read prices: Pyth (SOL), KuCoin (SKR) or explicit demo prices (badge them!). */
 export function usePriceSource(): PriceSource {
-  return APP_PRICE_SOURCE;
+  // Demo mode: deterministic demo prices (kind "mock" → every DEMO price badge shows).
+  return useDemo().active ? DEMO_PRICE_SOURCE : APP_PRICE_SOURCE;
 }

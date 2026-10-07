@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from "react";
+import { appNowSec } from "../demo/store";
 import { Linking, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
@@ -119,7 +120,7 @@ export function ReceiptDetailScreen({ route }: Props) {
         {
           signer: selectedAccount.publicKey,
           store: AsyncStorage,
-          nowSec: () => Math.floor(Date.now() / 1000),
+          nowSec: () => appNowSec(),
           getLatestBlockhash: async () => {
             const { context, value } = await connection.getLatestBlockhashAndContext();
             return { blockhash: value.blockhash, slot: context.slot };

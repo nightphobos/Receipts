@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { appNowSec } from "../demo/store";
 import type { Connection, PublicKey } from "@solana/web3.js";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
@@ -70,7 +71,7 @@ export function useReceipts(wallet: PublicKey | undefined) {
     queryFn: async (): Promise<ReceiptRow[]> => {
       if (!wallet) return [];
       const txs = await memoTxs(queryClient, connection, wallet);
-      const nowSec = Math.floor(Date.now() / 1000);
+      const nowSec = appNowSec();
       return Promise.all(buildReceipts(txs, wallet.toBase58()).map((r) => loadRow(source, r, nowSec)));
     },
   });
@@ -118,7 +119,7 @@ export function useReceiptsV2(wallet: PublicKey | undefined) {
     queryFn: async (): Promise<ReceiptRowV2[]> => {
       if (!wallet) return [];
       const txs = await memoTxs(queryClient, connection, wallet);
-      const nowSec = Math.floor(Date.now() / 1000);
+      const nowSec = appNowSec();
       return Promise.all(buildReceiptsV2(txs, wallet.toBase58()).map((r) => loadRowV2(source, r, nowSec)));
     },
   });

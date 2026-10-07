@@ -11,6 +11,9 @@ import { AppNavigator } from "./src/navigators/AppNavigator";
 import { ClusterProvider } from "./src/components/cluster/cluster-data-access";
 import { ToastHost, showErrorToast } from "./src/components/ui/toast";
 import { ParallaxBackground, colors, nightTheme, useThemeFonts } from "./src/theme";
+import { useEffect, useState } from "react";
+import { loadDemoState } from "./src/demo/store";
+import { DemoBanner, DemoRibbon, DemoSync } from "./src/demo/DemoChrome";
 
 // Queries opt into an error toast with `meta: { errorToast: "<prefix>" }`.
 const queryClient = new QueryClient({
@@ -24,16 +27,23 @@ const queryClient = new QueryClient({
 
 export default function App() {
   const fontsReady = useThemeFonts();
-  if (!fontsReady) return <View style={styles.shell} />;
+  const [demoLoaded, setDemoLoaded] = useState(false);
+  useEffect(() => {
+    loadDemoState().finally(() => setDemoLoaded(true));
+  }, []);
+  if (!fontsReady || !demoLoaded) return <View style={styles.shell} />;
   return (
     <QueryClientProvider client={queryClient}>
       <ClusterProvider>
         <ConnectionProvider config={{ commitment: "confirmed" }}>
           <SafeAreaView style={styles.shell}>
             <PaperProvider theme={nightTheme}>
+              <DemoSync />
+              <DemoBanner />
               <ParallaxBackground>
                 <AppNavigator />
               </ParallaxBackground>
+              <DemoRibbon />
               <ToastHost />
             </PaperProvider>
           </SafeAreaView>

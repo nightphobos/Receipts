@@ -7,6 +7,7 @@ import { PublicKey } from "@solana/web3.js";
 
 import { formatChangePct, formatSigma } from "../core/ceremony";
 import { formatUsd, solscanTxUrl } from "../core/format";
+import { isDemoSignature } from "../core/demoData";
 import type { ProfileReceipt } from "../core/leaderboard";
 import { LEADERBOARD_MIN_DAYS, LEADERBOARD_MIN_N } from "../core/score";
 import { formatHitRate, formatUtcDayTime } from "../core/share";
@@ -74,6 +75,7 @@ function TipPanel({ recipient }: { recipient: string }) {
       } catch (e) {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         if (isUserRejection(e)) showToast("Tip cancelled, nothing was sent.");
+        else if (e instanceof Error && e.message.startsWith("Demo mode")) showToast("Demo mode — no SKR was sent");
         else alertAndLog("Tip failed", e instanceof Error ? e.message : String(e));
       } finally {
         setSending(null);
@@ -150,7 +152,11 @@ export function WalletProfileScreen({ route }: Props) {
       renderItem={({ item }) => (
         <ReceiptLine
           r={item}
-          onPress={() => Linking.openURL(solscanTxUrl(item.revealSignature ?? item.commitSignature, selectedCluster.network))}
+          onPress={() => {
+            const sig = item.revealSignature ?? item.commitSignature;
+            if (isDemoSignature(sig)) showToast("Demo: simulated tx — nothing is on Solana");
+            else Linking.openURL(solscanTxUrl(sig, selectedCluster.network));
+          }}
         />
       )}
       ListEmptyComponent={

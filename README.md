@@ -276,3 +276,16 @@ Same hash rule and reveal window as v2; v1 used random salts stored only on the 
 - **Android only**, since Mobile Wallet Adapter doesn't exist on iOS.
 - **Seeker Genesis Token** check: the wallet's Token-2022 accounts are searched for a token with mint authority `GT2zuHVaZQYZSyQMgJPLzvkmyztfyXg2NJunqFp4p3A4` and group `GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te`.
 - The Pyth API key, if set, is bundled into the APK. That is acceptable for a hackathon demo, not for production.
+
+
+## Demo mode (for judges — no wallet, no SOL)
+
+Tap **Try demo (no wallet)** on any "Connect wallet" screen (or Settings → Demo mode). You get a simulated player `DemoYou…` with ~10 days of history, a leaderboard of 12 other `Demo…` players and SKR Daily calls.
+
+- **Play the whole loop in a minute:** open the receipt marked *awaiting reveal* → *Recover with wallet & reveal* → the receipt prints and gets stamped. Seal a new call on **New**, then press **⏩ +1h / ⏩ +24h** in the yellow banner to move the demo clock past its deadline and reveal it.
+- **Same code as live mode:** the demo replaces only the data source. A simulated chain answers the same RPC calls (`getSignaturesForAddress`, `getParsedTransactions`) with tagged `rcpt:2:` memo txs, so parsing, scoring, zσ, the leaderboard and the reveal ceremony are the real code. Prices come from a deterministic per-minute series (SOL ≈ $118, SKR ≈ 0.0167).
+- **Impossible to mistake for real records:** a DEMO ribbon and banner on every screen, Chekko holds a DEMO sign, all demo wallets start with `Demo`, demo signatures start with `demo` and never link to Solscan, shared text starts with `[DEMO — not a real record]`.
+- **Isolated:** never opens the wallet, never signs or sends anything, never touches your real authorization or master key. Exit returns to live mode untouched; *Reset demo data* restores the seed.
+- **Build flag:** `EXPO_PUBLIC_DEMO_MODE=off` removes every demo entry point (dApp Store build).
+
+Code: `src/core/demoData.ts` (seed, prices, pure + tested), `src/demo/` (store + clock, simulated `Connection`, wallet stand-in, ribbon/banner).

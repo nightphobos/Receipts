@@ -32,6 +32,9 @@ const isParsed = (data: Buffer | ParsedAccountData): data is ParsedAccountData =
  * has a mint owned by Token-2022 that passes `isSeekerGenesisMint`. RPC errors propagate.
  */
 export async function hasSeekerGenesisToken(conn: GenesisConnection, owner: PublicKey): Promise<boolean> {
+  // Demo mode's simulated chain answers from its seed (src/demo/DemoConnection.ts).
+  const demo = (conn as { demoHasGenesis?: (wallet: string) => boolean }).demoHasGenesis;
+  if (demo) return demo(owner.toBase58());
   const { value } = await conn.getParsedTokenAccountsByOwner(owner, { programId: TOKEN_2022_PROGRAM_ID });
   const mints = heldMints(value.map((a) => a.account.data.parsed));
   for (let i = 0; i < mints.length; i += MINTS_BATCH) {

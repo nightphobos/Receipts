@@ -1,4 +1,6 @@
 import React, { useMemo } from "react";
+import { appNowSec, isDemoActive } from "../demo/store";
+import { demoShareText } from "../core/demoData";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
@@ -72,7 +74,8 @@ export function ProfileScreen() {
   const elig = useMemo(() => eligibility(listV2, now, genesis.data === true), [listV2, now, genesis.data]);
 
   const copyShareText = async () => {
-    await Clipboard.setStringAsync(shareText(list, Math.floor(Date.now() / 1000), selectedCluster.network, { demo }));
+    const text = shareText(list, appNowSec(), selectedCluster.network, { demo });
+    await Clipboard.setStringAsync(isDemoActive() ? demoShareText(text) : text);
     showToast("Share text copied");
   };
 

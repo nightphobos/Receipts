@@ -6,6 +6,7 @@ import Svg, { Rect } from "react-native-svg";
 import { MASCOT_POSES, MASCOT_POSE_NAMES, mascotRuns, type MascotPixel, type MascotPose, type MascotRun } from "../core/mascot";
 import { PixelPanel } from "./PixelPanel";
 import { colors, fonts, mascotFill, space } from "./tokens";
+import { useDemo } from "../demo/store";
 
 const FILL: Record<MascotPixel, string> = mascotFill;
 
@@ -57,11 +58,15 @@ export type MascotDialogProps = MascotProps & {
 
 /** Chekko speaking from a JRPG dialog window. */
 export function MascotDialog({ pose, text, scale = 4, style }: MascotDialogProps) {
+  const demo = useDemo().active;
   return (
     <PixelPanel style={style} contentStyle={styles.row}>
       <Mascot pose={pose} scale={scale} />
       <View style={styles.speech}>
-        <Text style={styles.name}>CHEKKO</Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.name}>CHEKKO</Text>
+          {demo && <Text style={styles.demoSign}>DEMO</Text>}
+        </View>
         <Text style={styles.text}>{text}</Text>
       </View>
     </PixelPanel>
@@ -72,5 +77,15 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: space.md },
   speech: { flex: 1, gap: space.xs },
   name: { fontFamily: fonts.headingBold, fontSize: 14, color: colors.accent, letterSpacing: 1 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  demoSign: {
+    fontFamily: fonts.headingBold,
+    fontSize: 12,
+    color: colors.ink,
+    backgroundColor: colors.accent,
+    paddingHorizontal: space.xs,
+    borderWidth: 2,
+    borderColor: colors.ink,
+  },
   text: { fontFamily: fonts.body, fontSize: 14, color: colors.text, lineHeight: 20 },
 });

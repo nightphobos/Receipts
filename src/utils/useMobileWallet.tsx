@@ -7,8 +7,11 @@ import {
 } from "@solana/web3.js";
 import { useCallback, useMemo } from "react";
 import { SignInPayload } from "@solana-mobile/mobile-wallet-adapter-protocol";
+import { exitDemo, useDemo } from "../demo/store";
+import { demoAccount, demoSignAndSend, demoSignMessages } from "../demo/demoWallet";
 
 export function useMobileWallet() {
+  const demo = useDemo().active;
   const { authorizeSessionWithSignIn, authorizeSession, deauthorizeSession } =
     useAuthorization();
 
@@ -79,14 +82,25 @@ export function useMobileWallet() {
   );
 
   return useMemo(
-    () => ({
-      connect,
-      signIn,
-      disconnect,
-      signAndSendTransaction,
-      signMessage,
-      signMessages,
-    }),
-    [signAndSendTransaction, signMessage, signMessages]
+    () =>
+      demo
+        ? {
+            // Demo mode never opens a wallet: seals/reveals land on the simulated chain, nothing else is sent.
+            connect: async (): Promise<Account> => demoAccount as Account,
+            signIn: async (_p: SignInPayload): Promise<Account> => demoAccount as Account,
+            disconnect: async (): Promise<void> => exitDemo(),
+            signAndSendTransaction: (t: Transaction | VersionedTransaction, _slot: number) => demoSignAndSend(t),
+            signMessage: async (m: Uint8Array): Promise<Uint8Array> => (await demoSignMessages([m]))[0],
+            signMessages: demoSignMessages,
+          }
+        : {
+            connect,
+            signIn,
+            disconnect,
+            signAndSendTransaction,
+            signMessage,
+            signMessages,
+          },
+    [demo, connect, signIn, disconnect, signAndSendTransaction, signMessage, signMessages]
   );
 }

@@ -2,6 +2,8 @@ import { Menu } from "react-native-paper";
 import { useState } from "react";
 import * as Clipboard from "expo-clipboard";
 import { Linking } from "react-native";
+import { isDemoWallet } from "../../core/demoData";
+import { showToast } from "../ui/toast";
 
 import { Account, useAuthorization } from "../../utils/useAuthorization";
 import { useMobileWallet } from "../../utils/useMobileWallet";
@@ -47,7 +49,8 @@ export function TopBarWalletMenu() {
   };
 
   const viewExplorer = () => {
-    if (selectedAccount) {
+    if (selectedAccount && isDemoWallet(selectedAccount.publicKey.toBase58())) showToast("Demo wallet — not on Solana");
+    else if (selectedAccount) {
       Linking.openURL(getExplorerUrl(`account/${selectedAccount.publicKey.toBase58()}`));
     }
     closeMenu();

@@ -228,3 +228,9 @@ Iterations append below: `## <task id> — done|attempt N <date>`.
 
 ## HUMAN — demo mode 2026-10-07
 - Add an isolated demo mode (spec "Demo mode"): DataSource seam, simulated chain + demo clock with time warp, strong DEMO guardrails. Tasks T048–T050.
+
+## T048–T050 — done 2026-10-07 (by Claude in Cowork, not the loop)
+- `src/core/demoData.ts`: `Demo…` wallets (valid base58 keys found by prefix search), deterministic per-minute demo prices (SKR in 0.0001 steps → natural VOIDs), seeded simulated chain built with the real memo/hash/salt code; your record has every status (hit/miss/void/forfeited/overlap/sealed/awaiting_reveal), z > 1, eligible, streak ≥ 3; leaderboard ≥ 5 eligible + SKR Daily. Tests over 5 anchors (`demoData.test.ts`).
+- Seam = infrastructure, not screens: `src/demo/store.ts` (active/anchor/offset/extra txs, persisted `rcpt.demo.state`, `appNowSec` warped clock), `DemoConnection` (simulated RPC answering getSignaturesForAddress/getParsedTransactions/getLatestBlockhashAndContext + `demoHasGenesis` duck hook in chain/genesis.ts), `demoWallet` (MWA stand-in: rcpt memos → simulated chain, deterministic signMessage → derived master; tips refused "Demo mode — nothing was sent"). ConnectionProvider / useAuthorization / useMobileWallet / usePriceSource / useNowSec / useLeaderboard switch on `useDemo().active`; `Date.now()` in screens/hooks → `appNowSec()`.
+- UI: `DemoBanner` (⏩ +1h / +24h / EXIT), `DemoRibbon`, `DemoSync` (invalidate queries on change), Chekko DEMO sign, "Try demo (no wallet)" under every Connect button + Settings panel (exit/reset), demo signatures → "simulated" instead of Solscan, share texts via `demoShareText`. `EXPO_PUBLIC_DEMO_MODE=off` hides entry points.
+- Gates: `yarn test` 38 suites / 657 tests, `yarn typecheck` clean, Metro JS bundle OK (hermesc can't run in the Linux sandbox). **Release build + install on the Seeker still to do on the Mac** (`./ship.sh`).

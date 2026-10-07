@@ -1,4 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { demoShareText, isDemoSignature } from "../core/demoData";
+import { useDemo } from "../demo/store";
+import { appNowSec } from "../demo/store";
 import { Linking, RefreshControl, ScrollView, Share, StyleSheet, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
@@ -41,6 +44,8 @@ import { mascotLine, poseForStatus } from "../core/mascot";
 const fmtTime = (sec: number) => new Date(sec * 1000).toLocaleString();
 
 function TxLink({ label, signature, cluster }: { label: string; signature: string; cluster: string }) {
+  if (isDemoSignature(signature))
+    return <PixelLink label={`${label} · simulated`} onPress={() => showToast("Demo: simulated tx — nothing is on Solana")} />;
   return <PixelLink label={label} onPress={() => Linking.openURL(solscanTxUrl(signature, cluster))} />;
 }
 
@@ -111,6 +116,7 @@ export function ReceiptDetailV2({
   const status = statusOfV2(receipt, now);
   const pendingReveal = sentReveal !== null && !receipt.reveal;
   const demo = isDemo(priceSource, receipt.asset);
+  const demoMode = useDemo().active;
   const { name: priceName } = SOURCE_LABEL[priceSource.kindOf(receipt.asset)];
   const needsRecovery = !row.hasSecret && !masterKey.master;
   const pose = poseForStatus(status, { printing: revealing || pendingReveal });
@@ -126,9 +132,10 @@ export function ReceiptDetailV2({
     status === "sealed"
       ? sealedShareText(receipt, cluster)
       : resultShareText(receipt, all, now, cluster, { demo });
-  const onShare = () => Share.share({ message: share ?? "" }).catch(() => undefined);
+  const shareOut = demoMode && share ? demoShareText(share) : share;
+  const onShare = () => Share.share({ message: shareOut ?? "" }).catch(() => undefined);
   const onCopy = async () => {
-    await Clipboard.setStringAsync(share ?? "");
+    await Clipboard.setStringAsync(shareOut ?? "");
     showToast("Share text copied");
   };
 
@@ -151,7 +158,7 @@ export function ReceiptDetailV2({
           signer: selectedAccount.publicKey,
           store: AsyncStorage,
           master,
-          nowSec: () => Math.floor(Date.now() / 1000),
+          nowSec: () => appNowSec(),
           getLatestBlockhash: async () => {
             const { context, value } = await connection.getLatestBlockhashAndContext();
             return { blockhash: value.blockhash, slot: context.slot };

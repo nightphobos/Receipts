@@ -5,15 +5,34 @@ import { ASSETS } from "../core/call";
 import { SOURCE_LABEL } from "../core/price";
 import { usePriceSource } from "../hooks/usePriceSource";
 import { LEADERBOARD_SOURCE } from "../hooks/useLeaderboard";
-import { Body, Heading, Muted, PixelPanel, space, useParallaxScroll } from "../theme";
+import { Body, Heading, Muted, PixelButton, PixelPanel, space, useParallaxScroll } from "../theme";
+import { DEMO_ALLOWED, enterDemo, exitDemo, resetDemo, useDemo } from "../demo/store";
 
 /** Read-only build settings: cluster and data sources are fixed at build time (EXPO_PUBLIC_*). */
 export function SettingsScreen() {
   const parallaxScroll = useParallaxScroll();
   const { selectedCluster } = useCluster();
   const priceSource = usePriceSource();
+  const demo = useDemo();
   return (
     <ScrollView {...parallaxScroll} contentContainerStyle={styles.container}>
+      {DEMO_ALLOWED && (
+        <PixelPanel title="DEMO MODE">
+          <Muted>
+            {demo.active
+              ? "On: simulated wallets, calls and prices on this phone only. Nothing is signed or sent; your real wallet and secrets are untouched."
+              : "Try the full loop without a wallet: simulated data, clearly marked DEMO, nothing is signed or sent."}
+          </Muted>
+          {demo.active ? (
+            <>
+              <PixelButton label="Exit demo" variant="gold" onPress={exitDemo} />
+              <PixelButton label="Reset demo data" variant="ghost" onPress={() => resetDemo()} />
+            </>
+          ) : (
+            <PixelButton label="Try demo (no wallet)" variant="ghost" onPress={enterDemo} />
+          )}
+        </PixelPanel>
+      )}
       <PixelPanel title="CLUSTER">
         <Heading>{selectedCluster.name}</Heading>
         <Muted selectable>{selectedCluster.endpoint}</Muted>

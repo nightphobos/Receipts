@@ -14,6 +14,8 @@ import { toUint8Array } from "js-base64";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { APP_CLUSTER } from "../components/cluster/cluster-data-access";
+import { useDemo } from "../demo/store";
+import { demoAccount } from "../demo/demoWallet";
 
 // MWA chain ids: "solana:mainnet" / "solana:devnet" (not "mainnet-beta").
 const CHAIN_IDENTIFIER =
@@ -106,6 +108,7 @@ export const APP_IDENTITY = {
 };
 
 export function useAuthorization() {
+  const demo = useDemo().active;
   const queryClient = useQueryClient();
   const { data: authorization, isLoading } = useQuery({
     queryKey: ["wallet-authorization"],
@@ -167,14 +170,25 @@ export function useAuthorization() {
     [authorization]
   );
   return useMemo(
-    () => ({
-      accounts: authorization?.accounts ?? null,
-      authorizeSession,
-      authorizeSessionWithSignIn,
-      deauthorizeSession,
-      selectedAccount: authorization?.selectedAccount ?? null,
-      isLoading,
-    }),
-    [authorization, authorizeSession, deauthorizeSession]
+    () =>
+      demo
+        ? {
+            // Demo mode: a fake `Demo…` account; the real wallet authorization is left untouched.
+            accounts: [demoAccount] as Account[],
+            authorizeSession: async (_wallet: AuthorizeAPI) => demoAccount as Account,
+            authorizeSessionWithSignIn: async (_wallet: AuthorizeAPI, _p: SignInPayload) => demoAccount as Account,
+            deauthorizeSession: async (_wallet: DeauthorizeAPI) => undefined,
+            selectedAccount: demoAccount as Account,
+            isLoading: false,
+          }
+        : {
+            accounts: authorization?.accounts ?? null,
+            authorizeSession,
+            authorizeSessionWithSignIn,
+            deauthorizeSession,
+            selectedAccount: authorization?.selectedAccount ?? null,
+            isLoading,
+          },
+    [demo, authorization, authorizeSession, deauthorizeSession]
   );
 }

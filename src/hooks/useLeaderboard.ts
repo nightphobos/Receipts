@@ -1,4 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
+import { appNowSec } from "../demo/store";
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchRegistry } from "../chain/fetchHistory";
@@ -16,6 +17,7 @@ import {
 import { priceAt } from "../core/price";
 import { useConnection } from "../utils/ConnectionProvider";
 import { usePriceSource } from "./usePriceSource";
+import { useDemo } from "../demo/store";
 
 // Literal process.env access so Expo inlines the value at bundle time.
 const LEADERBOARD_BASE = leaderboardBaseUrl({ EXPO_PUBLIC_LEADERBOARD_URL: process.env.EXPO_PUBLIC_LEADERBOARD_URL });
@@ -46,7 +48,7 @@ function useComputedLeaderboard(enabled: boolean) {
       const txs = await fetchRegistry(connection, { maxSignatures: MAX_REGISTRY_SIGNATURES });
       return computeLeaderboard({
         txs,
-        nowSec: Math.floor(Date.now() / 1000),
+        nowSec: appNowSec(),
         price: async (asset, ts) => (await priceAt(source, asset, ts))?.price ?? null,
         hasGenesis: (wallet) => hasSeekerGenesisToken(connection, new PublicKey(wallet)),
       });
@@ -56,33 +58,36 @@ function useComputedLeaderboard(enabled: boolean) {
 
 /** The global leaderboard: indexer site when configured, else computed from the registry. */
 export function useLeaderboard() {
-  const computed = useComputedLeaderboard(LEADERBOARD_BASE === null);
+  // Demo mode always computes from the simulated chain; live and demo rows are never mixed.
+  const base = useDemo().active ? null : LEADERBOARD_BASE;
+  const computed = useComputedLeaderboard(base === null);
   const site = useQuery({
-    queryKey: ["leaderboard", "site", LEADERBOARD_BASE],
-    enabled: LEADERBOARD_BASE !== null,
+    queryKey: ["leaderboard", "site", base],
+    enabled: base !== null,
     staleTime: 60 * 1000,
     queryFn: async (): Promise<Leaderboard> => {
-      const lb = parseLeaderboard(await fetchJson(leaderboardUrl(LEADERBOARD_BASE as string)));
+      const lb = parseLeaderboard(await fetchJson(leaderboardUrl(base as string)));
       if (!lb) throw new Error("Leaderboard file missing or in an unknown format");
       return lb;
     },
   });
-  if (LEADERBOARD_BASE !== null) return site;
+  if (base !== null) return site;
   return { ...computed, data: computed.data?.leaderboard };
 }
 
 /** Read-only profile of any wallet (null = no v2 receipts on record). */
 export function useWalletProfile(wallet: string) {
-  const computed = useComputedLeaderboard(LEADERBOARD_BASE === null);
+  const base = useDemo().active ? null : LEADERBOARD_BASE;
+  const computed = useComputedLeaderboard(base === null);
   const site = useQuery({
-    queryKey: ["leaderboard", "site-profile", LEADERBOARD_BASE, wallet],
-    enabled: LEADERBOARD_BASE !== null,
+    queryKey: ["leaderboard", "site-profile", base, wallet],
+    enabled: base !== null,
     staleTime: 60 * 1000,
     queryFn: async (): Promise<WalletProfile | null> => {
-      const json = await fetchJson(profileUrl(LEADERBOARD_BASE as string, wallet));
+      const json = await fetchJson(profileUrl(base as string, wallet));
       return json === null ? null : parseWalletProfile(json);
     },
   });
-  if (LEADERBOARD_BASE !== null) return site;
+  if (base !== null) return site;
   return { ...computed, data: computed.data ? (computed.data.profiles.get(wallet) ?? null) : undefined };
 }

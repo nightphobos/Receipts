@@ -1,20 +1,24 @@
 import React, { useCallback, useState } from "react";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
-import { Button, HelperText, SegmentedButtons, Text, TextInput } from "react-native-paper";
+import { Button, Card, Chip, HelperText, SegmentedButtons, Text } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getRandomBytes } from "expo-crypto";
 import * as Haptics from "expo-haptics";
 import { useNavigation } from "@react-navigation/native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { ASSETS, type Asset, type Direction } from "../core/call";
-import { DEADLINE_PRESETS, draftCall, parseCustomHours } from "../core/draft";
+import { ASSETS, type Asset, type DirectionV2 } from "../core/call";
+import { DEFAULT_HORIZON, HORIZON_CHOICES, deadlineFor, draftAsset, draftCallV2, type HorizonChoice } from "../core/draftV2";
 import { formatUsd } from "../core/format";
-import { SOURCE_LABEL, isDemo, type PriceSourceKind } from "../core/price";
-import { RECEIPTS_QUERY_KEY } from "../hooks/useReceipts";
+import { SOURCE_LABEL, isDemo } from "../core/price";
+import { hasOpenPosition, horizonClass } from "../core/score";
+import type { MasterState } from "../storage/master";
+import { RECEIPTS_QUERY_KEY, useReceiptsV2 } from "../hooks/useReceipts";
+import { useMasterKey } from "../hooks/useMasterKey";
 import { usePriceSource } from "../hooks/usePriceSource";
+import { useNowSec } from "../hooks/useNow";
 import { DemoBadge } from "../components/receipt/demo-badge";
-import { isUserRejection, sealCall } from "../chain/seal";
+import { isUserRejection, sealCallV2 } from "../chain/seal";
 import { useAuthorization } from "../utils/useAuthorization";
 import { useMobileWallet } from "../utils/useMobileWallet";
 import { useConnection } from "../utils/ConnectionProvider";
@@ -23,7 +27,6 @@ import { alertAndLog } from "../utils/alertAndLog";
 import { showToast } from "../components/ui/toast";
 
 const WARNED_KEY = "rcpt:warned-local-secrets";
-const CUSTOM = "custom";
 
 function useLatestPrice(asset: Asset) {
   const source = usePriceSource();
@@ -35,13 +38,16 @@ function useLatestPrice(asset: Asset) {
   });
 }
 
-/** Shown once before the first seal: losing local data = forfeit. Resolves true if accepted. */
+/**
+ * Random-salt fallback only (wallet signs non-deterministically): losing local data = forfeit.
+ * Shown once before the first such seal. Resolves true if accepted.
+ */
 async function confirmLocalSecretsWarning(): Promise<boolean> {
   if ((await AsyncStorage.getItem(WARNED_KEY)) === "1") return true;
   const ok = await new Promise<boolean>((resolve) =>
     Alert.alert(
       "Your secret stays on this phone",
-      "The salt that reveals this call is stored only on this device. If you uninstall the app or lose the phone before revealing, the call counts as a miss. Use Profile → Export secrets to back them up.",
+      "Your wallet doesn't sign deterministically, so calls can't be recovered from it. The salt that reveals this call is stored only on this device. If you uninstall the app or lose the phone before revealing, the call counts as a miss. Use Profile → Export secrets to back them up.",
       [
         { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
         { text: "I understand", onPress: () => resolve(true) },
@@ -53,44 +59,97 @@ async function confirmLocalSecretsWarning(): Promise<boolean> {
   return ok;
 }
 
+function MasterKeyCard({ state, onSetup, busy }: { state: MasterState | null; onSetup: () => void; busy: boolean }) {
+  if (state?.mode === "derived") return null;
+  if (state?.mode === "random")
+    return (
+      <Card style={[styles.gap, styles.warnCard]}>
+        <Card.Content>
+          <Text variant="titleSmall">Secrets are stored only on this phone</Text>
+          <Text variant="bodySmall">
+            Your wallet signed the key message differently twice, so calls can't be recovered on another device.
+            Back up with Profile → Export secrets.
+          </Text>
+        </Card.Content>
+      </Card>
+    );
+  return (
+    <Card style={styles.gap}>
+      <Card.Content>
+        <Text variant="titleSmall">Set up your receipt key</Text>
+        <Text variant="bodySmall">
+          Your wallet signs a fixed message (twice, to check it's deterministic). It hides your direction until you
+          reveal and lets you reveal from any phone. It cannot move funds.
+        </Text>
+      </Card.Content>
+      <Card.Actions>
+        <Button icon="key" onPress={onSetup} loading={busy} disabled={busy}>
+          Sign to set up
+        </Button>
+      </Card.Actions>
+    </Card>
+  );
+}
+
 export function NewReceiptScreen() {
   const { selectedAccount } = useAuthorization();
   const { connection } = useConnection();
   const wallet = useMobileWallet();
   const navigation = useNavigation();
   const queryClient = useQueryClient();
+  const masterKey = useMasterKey(selectedAccount?.publicKey);
+  const receipts = useReceiptsV2(selectedAccount?.publicKey);
+  const nowSec = useNowSec();
 
-  const [asset, setAsset] = useState<Asset>("SOL");
-  const [dir, setDir] = useState<Direction>("above");
-  const [targetText, setTargetText] = useState("");
-  const [preset, setPreset] = useState<string>(String(DEADLINE_PRESETS[1].seconds));
-  const [customHours, setCustomHours] = useState("");
-  const [tried, setTried] = useState(false);
+  const [assetPick, setAsset] = useState<Asset>("SOL");
+  const [dir, setDir] = useState<DirectionV2 | null>(null);
+  const [horizon, setHorizon] = useState<HorizonChoice>(DEFAULT_HORIZON);
+  const [settingUp, setSettingUp] = useState(false);
   const [sealing, setSealing] = useState(false);
 
+  const asset = draftAsset({ asset: assetPick, horizon });
   const priceSource = usePriceSource();
   const demo = isDemo(priceSource, asset);
   const { name: priceName, quote } = SOURCE_LABEL[priceSource.kindOf(asset)];
   const price = useLatestPrice(asset);
-  const durationSec = preset === CUSTOM ? parseCustomHours(customHours) : Number(preset);
-  const nowSec = Math.floor(Date.now() / 1000);
-  const draft = draftCall({ asset, dir, targetText, durationSec }, nowSec);
-  const showErrors = tried || targetText !== "";
+  const deadlineSec = deadlineFor(horizon, nowSec);
+  const open = hasOpenPosition(
+    (receipts.data ?? []).map((r) => r.receipt),
+    asset,
+    horizonClass(nowSec, deadlineSec),
+    nowSec,
+  );
+
+  const setupMaster = useCallback(async (): Promise<MasterState | null> => {
+    setSettingUp(true);
+    try {
+      const state = await masterKey.setup();
+      if (state.mode === "random") showToast("Wallet signatures differ: secrets will stay on this phone only.");
+      return state;
+    } catch (e) {
+      if (isUserRejection(e)) showToast("Key setup cancelled.");
+      else alertAndLog("Key setup failed", e instanceof Error ? e.message : String(e));
+      return null;
+    } finally {
+      setSettingUp(false);
+    }
+  }, [masterKey]);
 
   const onSeal = useCallback(async () => {
-    setTried(true);
     if (!selectedAccount) return;
-    const now = Math.floor(Date.now() / 1000);
-    const result = draftCall({ asset, dir, targetText, durationSec }, now);
+    const result = draftCallV2({ asset, dir, horizon }, Math.floor(Date.now() / 1000));
     if (!result.ok) return;
-    if (!(await confirmLocalSecretsWarning())) return;
+    const state = masterKey.state ?? (await setupMaster());
+    if (!state) return;
+    if (state.mode === "random" && !(await confirmLocalSecretsWarning())) return;
 
     setSealing(true);
     try {
-      const { hash, signature } = await sealCall(
+      const { hash, signature } = await sealCallV2(
         {
           signer: selectedAccount.publicKey,
           store: AsyncStorage,
+          master: state.mode === "derived" ? state.master : null,
           randomBytes: getRandomBytes,
           getLatestBlockhash: async () => {
             const { context, value } = await connection.getLatestBlockhashAndContext();
@@ -101,8 +160,7 @@ export function NewReceiptScreen() {
         result.call,
       );
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setTargetText("");
-      setTried(false);
+      setDir(null);
       queryClient.invalidateQueries({ queryKey: [RECEIPTS_QUERY_KEY] });
       navigation.navigate("ReceiptDetail", { hash, signature });
     } catch (e) {
@@ -116,7 +174,7 @@ export function NewReceiptScreen() {
     } finally {
       setSealing(false);
     }
-  }, [selectedAccount, asset, dir, targetText, durationSec, connection, wallet, navigation, queryClient]);
+  }, [selectedAccount, asset, dir, horizon, masterKey.state, setupMaster, connection, wallet, navigation, queryClient]);
 
   if (!selectedAccount) {
     return (
@@ -130,17 +188,18 @@ export function NewReceiptScreen() {
     );
   }
 
-  const deadlineSec = durationSec !== null ? nowSec + durationSec : null;
-
   return (
-    <ScrollView contentContainerStyle={styles.screenContainer} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={styles.screenContainer}>
       <Text variant="titleLarge">Seal a call</Text>
+      {!masterKey.isLoading && (
+        <MasterKeyCard state={masterKey.state} onSetup={setupMaster} busy={settingUp} />
+      )}
 
       <Text variant="labelLarge" style={styles.label}>Asset</Text>
       <SegmentedButtons
         value={asset}
         onValueChange={(v) => setAsset(v as Asset)}
-        buttons={ASSETS.map((a) => ({ value: a, label: a }))}
+        buttons={ASSETS.map((a) => ({ value: a, label: a, disabled: horizon === "skr-daily" && a !== "SKR" }))}
       />
       <View style={styles.hintRow}>
         <HelperText type="info" visible>
@@ -153,70 +212,73 @@ export function NewReceiptScreen() {
         {demo && <DemoBadge />}
       </View>
 
-      <Text variant="labelLarge" style={styles.label}>Price at deadline will be</Text>
-      <SegmentedButtons
-        value={dir}
-        onValueChange={(v) => setDir(v as Direction)}
-        buttons={[
-          { value: "above", label: "Above", icon: "arrow-up" },
-          { value: "below", label: "Below", icon: "arrow-down" },
-        ]}
-      />
+      <Text variant="labelLarge" style={styles.label}>At the deadline the price will be</Text>
+      <View style={styles.dirRow}>
+        <Button
+          mode={dir === "up" ? "contained" : "outlined"}
+          buttonColor={dir === "up" ? "#1E9E5A" : undefined}
+          style={styles.dirButton}
+          contentStyle={styles.dirContent}
+          labelStyle={styles.dirLabel}
+          onPress={() => setDir("up")}
+        >
+          ▲ Up
+        </Button>
+        <Button
+          mode={dir === "down" ? "contained" : "outlined"}
+          buttonColor={dir === "down" ? "#D03B3B" : undefined}
+          style={styles.dirButton}
+          contentStyle={styles.dirContent}
+          labelStyle={styles.dirLabel}
+          onPress={() => setDir("down")}
+        >
+          ▼ Down
+        </Button>
+      </View>
+      <Text variant="bodySmall" style={styles.muted}>
+        Compared with the price one minute after your seal lands on chain.
+      </Text>
 
-      <TextInput
-        style={styles.gap}
-        mode="outlined"
-        label="Target price (USD)"
-        keyboardType="decimal-pad"
-        value={targetText}
-        onChangeText={setTargetText}
-        left={<TextInput.Affix text="$" />}
-      />
-
-      <Text variant="labelLarge" style={styles.label}>Deadline</Text>
-      <SegmentedButtons
-        value={preset}
-        onValueChange={setPreset}
-        buttons={[
-          ...DEADLINE_PRESETS.map((p) => ({ value: String(p.seconds), label: p.label })),
-          { value: CUSTOM, label: "Custom" },
-        ]}
-      />
-      {preset === CUSTOM && (
-        <TextInput
-          style={styles.gap}
-          mode="outlined"
-          label="Hours from now (1 – 720)"
-          keyboardType="decimal-pad"
-          value={customHours}
-          onChangeText={setCustomHours}
-        />
-      )}
-      {deadlineSec !== null && (
+      <Text variant="labelLarge" style={styles.label}>Horizon</Text>
+      <View style={styles.chips}>
+        {HORIZON_CHOICES.map((h) => (
+          <Chip key={h.value} selected={horizon === h.value} showSelectedOverlay onPress={() => setHorizon(h.value)}>
+            {h.label}
+          </Chip>
+        ))}
+      </View>
+      <HelperText type="info" visible>
+        {`Deadline: ${new Date(deadlineSec * 1000).toLocaleString()}`}
+      </HelperText>
+      {horizon === "1h" && (
         <HelperText type="info" visible>
-          {`Deadline: ${new Date(deadlineSec * 1000).toLocaleString()}`}
+          Practice: counts in your stats, never on the leaderboard.
         </HelperText>
       )}
-
-      {showErrors && !draft.ok &&
-        draft.errors.map((e) => (
-          <HelperText key={e} type="error" visible>
-            {e}
-          </HelperText>
-        ))}
+      {horizon === "skr-daily" && (
+        <HelperText type="info" visible>
+          SKR Daily: everybody's daily SKR call ends at the same 12:00 UTC.
+        </HelperText>
+      )}
+      {open && (
+        <HelperText type="error" visible>
+          {`You already have an open ${asset} call in this horizon. A second one now would count as a miss — wait for its deadline.`}
+        </HelperText>
+      )}
 
       <Button
         style={styles.gap}
         mode="contained"
         icon="lock"
         onPress={onSeal}
-        loading={sealing}
-        disabled={sealing || (showErrors && !draft.ok)}
+        loading={sealing || settingUp}
+        disabled={sealing || settingUp || dir === null || open || masterKey.isLoading}
       >
         Seal
       </Button>
       <Text variant="bodySmall" style={styles.gap}>
-        Only a hash goes on chain now. After the deadline you reveal the call; if you don't within 24 h, it counts as a miss.
+        Only a hash goes on chain now; your direction stays hidden. After the deadline you reveal it; if you don't
+        within 24 h, it counts as a miss.
       </Text>
     </ScrollView>
   );
@@ -224,14 +286,14 @@ export function NewReceiptScreen() {
 
 const styles = StyleSheet.create({
   hintRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  screenContainer: {
-    padding: 16,
-  },
-  label: {
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  gap: {
-    marginTop: 12,
-  },
+  screenContainer: { padding: 16 },
+  label: { marginTop: 16, marginBottom: 8 },
+  gap: { marginTop: 12 },
+  muted: { marginTop: 6, opacity: 0.7 },
+  warnCard: { backgroundColor: "#FFF4D6" },
+  dirRow: { flexDirection: "row", gap: 12 },
+  dirButton: { flex: 1 },
+  dirContent: { height: 72 },
+  dirLabel: { fontSize: 22, fontWeight: "bold" },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
 });

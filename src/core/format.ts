@@ -1,5 +1,5 @@
 /** Display helpers shared by the screens. Pure TS: no RN/Expo imports. */
-import { isCall, type Call } from "./call";
+import { isCall, isCallV2, type Call, type CallV2 } from "./call";
 
 export function formatUsd(p: number): string {
   return p >= 1 ? p.toFixed(2) : p.toPrecision(4);
@@ -29,6 +29,21 @@ export function callFromJson(json: string): Call | null {
   try {
     const x: unknown = JSON.parse(json);
     return isCall(x) ? x : null;
+  } catch {
+    return null;
+  }
+}
+
+/** "SOL ▲ up" / "SKR ▼ down". */
+export function describeCallV2(call: CallV2): string {
+  return `${call.asset} ${call.dir === "up" ? "▲ up" : "▼ down"}`;
+}
+
+/** v2 call from a stored/revealed JSON string, or null if it isn't one. */
+export function callV2FromJson(json: string): CallV2 | null {
+  try {
+    const x: unknown = JSON.parse(json);
+    return isCallV2(x) ? x : null;
   } catch {
     return null;
   }

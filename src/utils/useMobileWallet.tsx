@@ -64,6 +64,20 @@ export function useMobileWallet() {
     [authorizeSession]
   );
 
+  /** Several messages in ONE wallet session (one approval); returns the wallet's signed payloads. */
+  const signMessages = useCallback(
+    async (messages: Uint8Array[]): Promise<Uint8Array[]> => {
+      return await transact(async (wallet) => {
+        const authResult = await authorizeSession(wallet);
+        return await wallet.signMessages({
+          addresses: messages.map(() => authResult.address),
+          payloads: messages,
+        });
+      });
+    },
+    [authorizeSession]
+  );
+
   return useMemo(
     () => ({
       connect,
@@ -71,7 +85,8 @@ export function useMobileWallet() {
       disconnect,
       signAndSendTransaction,
       signMessage,
+      signMessages,
     }),
-    [signAndSendTransaction, signMessage]
+    [signAndSendTransaction, signMessage, signMessages]
   );
 }

@@ -3,9 +3,11 @@ import { commitHash } from "../commit";
 import {
   MASTER_MESSAGE,
   RECOVERY_WINDOW_SEC,
+  decideMaster,
   masterFromSignature,
   recoverCall,
   saltFor,
+  signatureFromSignedPayload,
 } from "../secret";
 
 // Fixed vector, computed independently with Python hashlib/hmac:
@@ -115,5 +117,38 @@ describe("recoverCall", () => {
   it("returns null for a malformed commit or blockTime", () => {
     expect(recoverCall(master, { hash: "zz", deadline, asset: "SOL" }, 1791313600)).toBeNull();
     expect(recoverCall(master, { hash: HASH_DOWN, deadline, asset: "SOL" }, 1.5)).toBeNull();
+  });
+});
+
+describe("decideMaster", () => {
+  const a = Uint8Array.from({ length: 64 }, (_, i) => i);
+  it("derives the master when both signatures are identical", () => {
+    expect(decideMaster(a, Uint8Array.from(a))).toEqual({ mode: "derived", master: masterFromSignature(a) });
+  });
+  it("falls back to random salts when the wallet signs non-deterministically", () => {
+    const b = Uint8Array.from(a);
+    b[63] ^= 1;
+    expect(decideMaster(a, b)).toEqual({ mode: "random" });
+  });
+  it("falls back when a signature has the wrong length", () => {
+    expect(decideMaster(a.slice(0, 63), a.slice(0, 63))).toEqual({ mode: "random" });
+  });
+});
+
+describe("signatureFromSignedPayload", () => {
+  const msg = new TextEncoder().encode(MASTER_MESSAGE);
+  const sig = Uint8Array.from({ length: 64 }, (_, i) => i + 1);
+  const concat = (a: Uint8Array, b: Uint8Array) => Uint8Array.from([...a, ...b]);
+  it("accepts a bare 64-byte signature", () => expect(signatureFromSignedPayload(sig, msg)).toEqual(sig));
+  it("takes the trailing 64 bytes of message ‖ signature", () =>
+    expect(signatureFromSignedPayload(concat(msg, sig), msg)).toEqual(sig));
+  it("takes the leading 64 bytes of signature ‖ message", () =>
+    expect(signatureFromSignedPayload(concat(sig, msg), msg)).toEqual(sig));
+  it("rejects anything else", () => {
+    expect(signatureFromSignedPayload(sig.slice(1), msg)).toBeNull();
+    expect(signatureFromSignedPayload(concat(sig, sig), msg)).toBeNull();
+    const other = Uint8Array.from(msg);
+    other[0] ^= 1;
+    expect(signatureFromSignedPayload(concat(other, sig), msg)).toBeNull();
   });
 });

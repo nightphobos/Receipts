@@ -11,7 +11,8 @@ import { SOURCE_LABEL, isDemo, type PriceSourceKind } from "../core/price";
 import { REVEAL_GRACE_SEC, statusOf, type Status } from "../core/score";
 import { canReveal, revealReceipt } from "../chain/reveal";
 import { isUserRejection } from "../chain/seal";
-import { RECEIPTS_QUERY_KEY, useReceipts, type ReceiptRow } from "../hooks/useReceipts";
+import { RECEIPTS_QUERY_KEY, useReceipts, useReceiptsV2, type ReceiptRow } from "../hooks/useReceipts";
+import { ReceiptDetailV2 } from "./ReceiptDetailV2";
 import { useNowSec } from "../hooks/useNow";
 import { usePriceSource } from "../hooks/usePriceSource";
 import { DemoBadge } from "../components/receipt/demo-badge";
@@ -90,12 +91,14 @@ export function ReceiptDetailScreen({ route }: Props) {
   const wallet = useMobileWallet();
   const queryClient = useQueryClient();
   const receipts = useReceipts(selectedAccount?.publicKey);
+  const receiptsV2 = useReceiptsV2(selectedAccount?.publicKey);
   const now = useNowSec();
   const [revealing, setRevealing] = useState(false);
   const [sentReveal, setSentReveal] = useState<string | null>(null);
 
   const cluster = selectedCluster.network;
   const row = receipts.data?.find((r) => r.receipt.hash === hash);
+  const rowV2 = receiptsV2.data?.find((r) => r.receipt.hash === hash);
 
   const onReveal = useCallback(async () => {
     if (!selectedAccount || !row) return;
@@ -127,11 +130,19 @@ export function ReceiptDetailScreen({ route }: Props) {
     }
   }, [selectedAccount, row, connection, wallet, queryClient]);
 
+  const refetchAll = () => {
+    receipts.refetch();
+    receiptsV2.refetch();
+  };
   const refresh = (
-    <RefreshControl refreshing={receipts.isRefetching} onRefresh={() => receipts.refetch()} />
+    <RefreshControl refreshing={receipts.isRefetching || receiptsV2.isRefetching} onRefresh={refetchAll} />
   );
 
-  if (receipts.isLoading) {
+  if (rowV2) {
+    return <ReceiptDetailV2 row={rowV2} refetch={refetchAll} isRefetching={receiptsV2.isRefetching} />;
+  }
+
+  if (receipts.isLoading || receiptsV2.isLoading) {
     return (
       <View style={[styles.screenContainer, styles.center]}>
         <ActivityIndicator />
@@ -140,24 +151,25 @@ export function ReceiptDetailScreen({ route }: Props) {
     );
   }
 
+  const loadError = receipts.error ?? receiptsV2.error;
   if (!row) {
     // Just sealed (not indexed yet), another wallet, or an RPC error.
     return (
       <ScrollView contentContainerStyle={styles.screenContainer} refreshControl={refresh}>
         <Text variant="titleLarge">
-          {receipts.isError ? "Couldn't load receipt" : "Waiting for the commit to confirm"}
+          {loadError ? "Couldn't load receipt" : "Waiting for the commit to confirm"}
         </Text>
         <Text style={styles.gapSmall}>
-          {receipts.isError
-            ? receipts.error instanceof Error
-              ? receipts.error.message
-              : String(receipts.error)
+          {loadError
+            ? loadError instanceof Error
+              ? loadError.message
+              : String(loadError)
             : "Pull down to refresh in a few seconds."}
         </Text>
         <Text variant="labelLarge" style={styles.gap}>Commit hash</Text>
         <Text selectable>{hash}</Text>
         {signature && <TxLink label="Commit on Solscan" signature={signature} cluster={cluster} />}
-        <Button style={styles.gap} mode="outlined" icon="refresh" onPress={() => receipts.refetch()}>
+        <Button style={styles.gap} mode="outlined" icon="refresh" onPress={refetchAll}>
           Refresh
         </Button>
       </ScrollView>

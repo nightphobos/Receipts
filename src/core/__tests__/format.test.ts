@@ -1,5 +1,5 @@
 import type { Call } from "../call";
-import { callFromJson, describeCall, formatCountdown, formatUsd, solscanTxUrl } from "../format";
+import { callFromJson, callV2FromJson, describeCall, describeCallV2, formatCountdown, formatUsd, solscanTxUrl } from "../format";
 
 const CALL: Call = { v: 1, asset: "SOL", dir: "above", target: 250.5, deadline: 1800086400, created: 1800000000 };
 const JSON_SOL = '{"v":1,"asset":"SOL","dir":"above","target":250.5,"deadline":1800086400,"created":1800000000}';
@@ -70,5 +70,29 @@ describe("solscanTxUrl", () => {
   });
   it("treats unknown clusters as mainnet", () => {
     expect(solscanTxUrl(SIG, "custom")).toBe(`https://solscan.io/tx/${SIG}`);
+  });
+});
+
+describe("callV2FromJson", () => {
+  it("parses a canonical v2 call", () => {
+    expect(callV2FromJson('{"v":2,"asset":"SOL","dir":"up","deadline":1791400000,"created":1791313600}')).toEqual({
+      v: 2,
+      asset: "SOL",
+      dir: "up",
+      deadline: 1791400000,
+      created: 1791313600,
+    });
+  });
+  it.each([
+    "not json",
+    '{"v":1,"asset":"SOL","dir":"above","target":1,"deadline":1791400000,"created":1791313600}',
+    '{"v":2,"asset":"SOL","dir":"above","deadline":1791400000,"created":1791313600}',
+  ])("rejects %p", (s) => expect(callV2FromJson(s)).toBeNull());
+});
+
+describe("describeCallV2", () => {
+  it("formats direction with arrows", () => {
+    expect(describeCallV2({ v: 2, asset: "SOL", dir: "up", deadline: 1, created: 0 })).toBe("SOL ▲ up");
+    expect(describeCallV2({ v: 2, asset: "SKR", dir: "down", deadline: 1, created: 0 })).toBe("SKR ▼ down");
   });
 });

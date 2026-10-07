@@ -23,6 +23,34 @@ export function masterFromSignature(signature: Uint8Array): Uint8Array {
   return sha256(signature);
 }
 
+const equalBytes = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+/**
+ * The 64-byte ed25519 signature inside an MWA `signMessages` result: wallets return either the bare
+ * signature or the message with the signature appended (or prepended). Null if it is none of these.
+ */
+export function signatureFromSignedPayload(signed: Uint8Array, message: Uint8Array): Uint8Array | null {
+  if (signed.length === SIGNATURE_BYTES) return signed;
+  if (signed.length !== message.length + SIGNATURE_BYTES) return null;
+  if (equalBytes(signed.subarray(0, message.length), message)) return signed.slice(message.length);
+  if (equalBytes(signed.subarray(SIGNATURE_BYTES), message)) return signed.slice(0, SIGNATURE_BYTES);
+  return null;
+}
+
+/** Outcome of the determinism self-check: same signature twice → derived master, else random local salts. */
+export type MasterDecision = { mode: "derived"; master: Uint8Array } | { mode: "random" };
+
+/** Compare two signatures of MASTER_MESSAGE; any mismatch or malformed signature → `random` fallback. */
+export function decideMaster(sigA: Uint8Array, sigB: Uint8Array): MasterDecision {
+  if (sigA.length !== SIGNATURE_BYTES || sigB.length !== SIGNATURE_BYTES) return { mode: "random" };
+  if (!equalBytes(sigA, sigB)) return { mode: "random" };
+  try {
+    return { mode: "derived", master: masterFromSignature(sigA) };
+  } catch {
+    return { mode: "random" };
+  }
+}
+
 /** `hex(hmac_sha256(master, "rcpt:2|" + asset + "|" + deadline))[0..32]`. */
 export function saltFor(master: Uint8Array, asset: Asset, deadline: number): string {
   if (!(master instanceof Uint8Array) || master.length !== MASTER_BYTES)

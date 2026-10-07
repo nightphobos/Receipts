@@ -5,10 +5,10 @@ import { useNavigation, type CompositeNavigationProp } from "@react-navigation/n
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { describeCall, formatCountdown, formatUsd } from "../core/format";
+import { describeCall, describeCallV2, formatCountdown, formatUsd } from "../core/format";
 import { SOURCE_LABEL, isDemo, type PriceSourceKind } from "../core/price";
-import { REVEAL_GRACE_SEC, statusOf, type Status } from "../core/score";
-import { useReceipts, type ReceiptRow } from "../hooks/useReceipts";
+import { REVEAL_GRACE_SEC, statusOf, statusOfV2, type Status, type StatusV2 } from "../core/score";
+import { useReceipts, useReceiptsV2, type ReceiptRow, type ReceiptRowV2 } from "../hooks/useReceipts";
 import { useNowSec } from "../hooks/useNow";
 import { usePriceSource } from "../hooks/usePriceSource";
 import { DemoBadge } from "../components/receipt/demo-badge";
@@ -73,11 +73,78 @@ function ReceiptItem({ row, now, onPress }: { row: ReceiptRow; now: number; onPr
   );
 }
 
+function statusLineV2(row: ReceiptRowV2, status: StatusV2, now: number): string {
+  const { receipt } = row;
+  switch (status) {
+    case "sealed":
+      return `Reveal opens in ${formatCountdown(receipt.deadline - now)}`;
+    case "awaiting_reveal":
+      return `Reveal within ${formatCountdown(receipt.deadline + REVEAL_GRACE_SEC - now)}`;
+    case "forfeited":
+      return "Not revealed in time — counts as a miss";
+    case "overlap":
+      return "Overlapping call — counts as a miss";
+    case "unresolved":
+      return "Waiting for prices";
+    case "legacy":
+      return "Legacy receipt";
+    case "hit":
+    case "miss":
+    case "void":
+      return `$${formatUsd(receipt.p0 as number)} → $${formatUsd(receipt.pt as number)}`;
+  }
+}
+
+function ReceiptItemV2({ row, now, onPress }: { row: ReceiptRowV2; now: number; onPress: () => void }) {
+  const status = statusOfV2(row.receipt, now);
+  const priceSource = usePriceSource();
+  const demo = isDemo(priceSource, row.receipt.asset);
+  const horizon = row.receipt.horizon === "1h" ? "1h practice" : row.receipt.horizon;
+  return (
+    <Card style={styles.card} onPress={onPress}>
+      <Card.Content>
+        <View style={styles.row}>
+          <Text variant="titleMedium" style={styles.title}>
+            {`${row.call ? describeCallV2(row.call) : `${row.receipt.asset} · hidden`} · ${horizon}`}
+          </Text>
+          <StatusChip status={status} />
+        </View>
+        {demo && (status === "hit" || status === "miss" || status === "void") && (
+          <View style={styles.gapSmall}>
+            <DemoBadge />
+          </View>
+        )}
+        <Text variant="bodyMedium" style={styles.gapSmall}>{statusLineV2(row, status, now)}</Text>
+        <Text variant="bodySmall" style={styles.muted}>
+          {`Deadline ${new Date(row.receipt.deadline * 1000).toLocaleString()}`}
+        </Text>
+      </Card.Content>
+    </Card>
+  );
+}
+
+type ListRow = { v: 1; row: ReceiptRow } | { v: 2; row: ReceiptRowV2 };
+
 export function ReceiptsListScreen() {
   const { selectedAccount } = useAuthorization();
   const navigation = useNavigation<Nav>();
-  const receipts = useReceipts(selectedAccount?.publicKey);
+  const legacy = useReceipts(selectedAccount?.publicKey);
+  const receiptsV2 = useReceiptsV2(selectedAccount?.publicKey);
   const now = useNowSec();
+  const receipts = {
+    isLoading: legacy.isLoading || receiptsV2.isLoading,
+    isRefetching: legacy.isRefetching || receiptsV2.isRefetching,
+    isError: legacy.isError || receiptsV2.isError,
+    error: legacy.error ?? receiptsV2.error,
+    refetch: () => {
+      legacy.refetch();
+      receiptsV2.refetch();
+    },
+  };
+  const rows: ListRow[] = [
+    ...(receiptsV2.data ?? []).map((row): ListRow => ({ v: 2, row })),
+    ...(legacy.data ?? []).map((row): ListRow => ({ v: 1, row })),
+  ].sort((a, b) => b.row.receipt.commit.blockTime - a.row.receipt.commit.blockTime);
 
   if (!selectedAccount) {
     return (
@@ -106,20 +173,20 @@ export function ReceiptsListScreen() {
   return (
     <FlatList
       contentContainerStyle={styles.list}
-      data={receipts.data ?? []}
-      keyExtractor={(r) => r.receipt.hash}
-      renderItem={({ item }) => (
-        <ReceiptItem
-          row={item}
-          now={now}
-          onPress={() =>
-            navigation.navigate("ReceiptDetail", {
-              hash: item.receipt.hash,
-              signature: item.receipt.commit.signature,
-            })
-          }
-        />
-      )}
+      data={rows}
+      keyExtractor={(r) => r.row.receipt.hash}
+      renderItem={({ item }) => {
+        const onPress = () =>
+          navigation.navigate("ReceiptDetail", {
+            hash: item.row.receipt.hash,
+            signature: item.row.receipt.commit.signature,
+          });
+        return item.v === 2 ? (
+          <ReceiptItemV2 row={item.row} now={now} onPress={onPress} />
+        ) : (
+          <ReceiptItem row={item.row} now={now} onPress={onPress} />
+        );
+      }}
       refreshControl={
         <RefreshControl refreshing={receipts.isRefetching} onRefresh={() => receipts.refetch()} />
       }

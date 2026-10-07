@@ -117,3 +117,33 @@ Replaces the absolute-target call. Rationale: with "above $X" a user could seal 
 
 ## Out of scope (v2)
 Confidence slider/Brier, boldness tiers, "Fade me" deep links, push notifications, other assets.
+
+
+---
+
+# Visual style: «Night Register» (pixel JRPG) — chosen 2026-10-07 by the human
+
+Mood: an old JRPG menu at 2 a.m. — a cash-register mimic prints your fate on thermal paper.
+Reference mockups (3 screens): Design canvas "Receipts — стили экранов", row 1. Copy text in English.
+
+## Tokens (src/theme/tokens.ts)
+- bg `#14122B` (night indigo) · bgDeep `#0E0C20` (tab bar) · surface `#24214A` (menu windows) · border `#4A4580` · text `#F4EEDC` (paper) · textMuted `#B9B2D6`
+- accent / CTA `#FFC94A` (gold, shadow `#9A7420`) · up/hit `#3EE08F` (shadow `#1E7A4E`) · down/miss `#FF5C7A` (shadow `#7A2234`) · sealed `#8C7BFF`
+- paper `#F4EEDC`, ink on paper `#1B1A2E`, stamps on paper: hit `#137A45`, miss `#C81E3A`
+- City layers: far `#1E1B3D`, near `#2B2756`, lit windows gold/purple/green/pink from the palette.
+- Fonts (@expo-google-fonts): headings **Pixelify Sans** 500/700 · body **DotGothic16** · numbers **VT323** (≥ 20sp, never smaller).
+- Status is shape + colour (colour-blind safe): HIT = round stamp with ✓, MISS = rectangle stamp with ✕, VOID = dashed grey rectangle, FORFEITED = MISS shape with "NO SHOW", SEALED = purple dither bar hiding the direction + countdown.
+
+## Components (src/theme/*)
+- **PixelButton**: square corners cut 2px, 2px border, hard 4–6px drop shadow (no blur) in the darker shade; on press it moves down by the shadow height, shadow disappears, a `▶` cursor appears on the left, light haptic. Variants: gold CTA, up (green), down (outlined pink), ghost.
+- **PixelPanel**: JRPG window — 2px paper-coloured outer border + inner 2px `#4A4580` border on `surface`.
+- **Chip** (horizon/asset), **StatusStamp**, **ReceiptPaper** (paper card with SVG zig-zag torn bottom edge, dashed separators, VT323 rows).
+- **Pixel icons** 16×16 grid drawn as SVG rects with `shapeRendering="crispEdges"`, rendered at 3× (48dp) or 1.5×: up, down, lock/seal, clock, flame (streak), trophy (rank), receipt, share, SKR coin, gear, check, cross.
+- **Tab bar**: 3 tabs — RECEIPTS (list + profile stats), NEW (centre), RANK. Active tab gold with `▶`.
+- **Mascot «Chekko»** — original cash-register mimic (no existing character): purple body, display with eyes, paper tongue. Poses: idle, eat (on Seal), print (reveal), cheer (HIT), cry (MISS). Pixel art as rect arrays in code (16×16), shown in a PixelPanel dialog: "Where will SOL be in 24h? I'll print your receipt."
+
+## Parallax background (src/theme/ParallaxBackground.tsx)
+- Three pixel layers behind every screen: **stars** (two dot grids), **far city** silhouette, **near city** with lit windows. Each layer is a horizontally seamless tile twice the screen width.
+- Motion sources, combined: (1) slow ambient drift — one tile width per 120 s / 60 s / 24 s; (2) **device tilt** via `expo-sensors` DeviceMotion (gamma/beta), low-pass filtered, ±4 / ±10 / ±18 px; (3) **scroll offset** of the screen's list, factors 0.1 / 0.25 / 0.5.
+- Snap offsets to whole device pixels of the pixel grid so art never blurs. Run on the UI thread (Reanimated shared values). Sensor at ~30 Hz, paused when the app is backgrounded. Disabled entirely (static layers) when the OS "reduce motion" setting is on.
+- The offset math is a pure function in `src/core/parallax.ts` (inputs: time, tilt, scroll, layer depth → x/y px, snapped) with unit tests.

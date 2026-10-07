@@ -1,7 +1,8 @@
 import { PublicKey, VersionedTransaction } from "@solana/web3.js";
-import { canonicalJson, type Call } from "../core/call";
+import { canonicalJson, canonicalJsonV2, type Call, type CallV2 } from "../core/call";
 import { commitHash, makeSalt, type RandomBytes } from "../core/commit";
-import { encodeCommitMemo } from "../core/memo";
+import { encodeCommitMemo, encodeCommitMemoV2 } from "../core/memo";
+import { saltFor } from "../core/secret";
 import { deleteSecret, saveSecret, type KeyValueStore } from "../storage/secrets";
 import { buildMemoTransaction } from "./memoTx";
 
@@ -40,8 +41,28 @@ export async function sealCall(deps: SealDeps, call: Call): Promise<SealResult> 
   const json = canonicalJson(call);
   const salt = makeSalt(deps.randomBytes);
   const hash = commitHash(json, salt);
-  const memo = encodeCommitMemo(hash, call.deadline);
-  await saveSecret(deps.store, hash, { json, salt });
+  return sealMemo(deps, hash, { json, salt }, encodeCommitMemo(hash, call.deadline));
+}
+
+export interface SealV2Deps extends SealDeps {
+  /** Derived master key; null = wallet signs non-deterministically → random salt (local secret only). */
+  master: Uint8Array | null;
+}
+
+/**
+ * Seal a validated v2 call. Salt = saltFor(master, asset, deadline) so the call can be recovered on
+ * any device; the secret is also saved locally (fast path, and the only copy in random-salt mode).
+ * The tx carries the registry tag (buildMemoTransaction tags every `rcpt:2:` memo).
+ */
+export async function sealCallV2(deps: SealV2Deps, call: CallV2): Promise<SealResult> {
+  const json = canonicalJsonV2(call);
+  const salt = deps.master ? saltFor(deps.master, call.asset, call.deadline) : makeSalt(deps.randomBytes);
+  const hash = commitHash(json, salt);
+  return sealMemo(deps, hash, { json, salt }, encodeCommitMemoV2(hash, call.deadline, call.asset));
+}
+
+async function sealMemo(deps: SealDeps, hash: string, secret: { json: string; salt: string }, memo: string) {
+  await saveSecret(deps.store, hash, secret);
 
   let tx: VersionedTransaction;
   let slot: number;

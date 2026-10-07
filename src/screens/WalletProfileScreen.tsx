@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { FlatList, Linking, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 import { ActivityIndicator, Button, Text } from "react-native-paper";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import * as Haptics from "expo-haptics";
+import { PublicKey } from "@solana/web3.js";
 
 import { formatChangePct, formatSigma } from "../core/ceremony";
 import { formatUsd, solscanTxUrl } from "../core/format";
@@ -9,9 +11,17 @@ import type { ProfileReceipt } from "../core/leaderboard";
 import { LEADERBOARD_MIN_DAYS, LEADERBOARD_MIN_N } from "../core/score";
 import { formatHitRate, formatUtcDayTime } from "../core/share";
 import { useWalletProfile } from "../hooks/useLeaderboard";
-import { useCluster } from "../components/cluster/cluster-data-access";
+import { TIP_AMOUNTS, canTip } from "../core/tip";
+import { isUserRejection } from "../chain/seal";
+import { buildTipTransaction } from "../chain/tipTx";
+import { ClusterNetwork, useCluster } from "../components/cluster/cluster-data-access";
+import { showToast } from "../components/ui/toast";
+import { useAuthorization } from "../utils/useAuthorization";
+import { useMobileWallet } from "../utils/useMobileWallet";
+import { useConnection } from "../utils/ConnectionProvider";
+import { alertAndLog } from "../utils/alertAndLog";
 import type { RootStackParamList } from "../navigators/AppNavigator";
-import { PixelPanel, StatusStamp, colors, fonts, space, useParallaxScroll } from "../theme";
+import { PixelButton, PixelPanel, StatusStamp, colors, fonts, space, useParallaxScroll } from "../theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "WalletProfile">;
 
@@ -36,6 +46,67 @@ function ReceiptLine({ r, onPress }: { r: ProfileReceipt; onPress: () => void })
   );
 }
 
+/** Tip 10/50/100 SKR: a direct wallet→wallet SPL transfer the tipper approves in their wallet (mainnet only). */
+function TipPanel({ recipient }: { recipient: string }) {
+  const { selectedAccount } = useAuthorization();
+  const { connection } = useConnection();
+  const { selectedCluster } = useCluster();
+  const wallet = useMobileWallet();
+  const [sending, setSending] = useState<number | null>(null);
+  const me = selectedAccount?.publicKey.toBase58();
+
+  const onTip = useCallback(
+    async (amount: number) => {
+      if (!selectedAccount) return;
+      setSending(amount);
+      try {
+        const { context, value } = await connection.getLatestBlockhashAndContext();
+        const tx = buildTipTransaction({
+          from: selectedAccount.publicKey,
+          to: new PublicKey(recipient),
+          amount,
+          recentBlockhash: value.blockhash,
+        });
+        const sig = await wallet.signAndSendTransaction(tx, context.slot);
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showToast(`Tipped ${amount} SKR`);
+        console.log(`tip ${amount} SKR → ${recipient}: ${sig}`);
+      } catch (e) {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        if (isUserRejection(e)) showToast("Tip cancelled, nothing was sent.");
+        else alertAndLog("Tip failed", e instanceof Error ? e.message : String(e));
+      } finally {
+        setSending(null);
+      }
+    },
+    [selectedAccount, connection, wallet, recipient],
+  );
+
+  if (selectedCluster.network !== ClusterNetwork.Mainnet) return null;
+  if (!canTip(me, recipient)) {
+    return me ? null : <Text style={styles.muted}>Connect a wallet to tip this caller in SKR.</Text>;
+  }
+  return (
+    <PixelPanel>
+      <Text style={styles.text}>Tip this caller in SKR</Text>
+      <Text style={styles.muted}>Straight from your wallet to theirs. Receipts never holds funds.</Text>
+      <View style={styles.tipRow}>
+        {TIP_AMOUNTS.map((amount) => (
+          <PixelButton
+            key={amount}
+            label={sending === amount ? "…" : `${amount} SKR`}
+            variant="ghost"
+            disabled={sending !== null}
+            onPress={() => onTip(amount)}
+            style={styles.flex}
+            accessibilityLabel={`Tip ${amount} SKR`}
+          />
+        ))}
+      </View>
+    </PixelPanel>
+  );
+}
+
 /** Read-only profile of any wallet (from the leaderboard). Directions stay hidden until revealed. */
 export function WalletProfileScreen({ route }: Props) {
   const { wallet } = route.params;
@@ -47,6 +118,7 @@ export function WalletProfileScreen({ route }: Props) {
   const header = (
     <View style={styles.header}>
       <Text selectable style={styles.wallet}>{wallet}</Text>
+      <TipPanel recipient={wallet} />
       {p && (
         <PixelPanel>
           <Text style={styles.sigma}>{formatSigma(p.leaderboardStats.z)}</Text>
@@ -117,5 +189,6 @@ const styles = StyleSheet.create({
   text: { color: colors.text },
   muted: { color: colors.textMuted, fontSize: 12 },
   flex: { flex: 1 },
+  tipRow: { flexDirection: "row", gap: space.sm, marginTop: space.sm },
   gap: { marginTop: space.lg },
 });
